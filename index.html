@@ -442,6 +442,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    async function checkCustomerExists(document) {
+        const url = `${API_BASE_URL}/customer/${document}/document`;
+        try {
+            const response = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${BEARER_TOKEN}` }
+            });
+            if (response.ok) { // Status 200-299
+                return true;
+            }
+            if (response.status === 404) {
+                return false;
+            }
+            // Trata outros erros
+            const errorBody = await response.json().catch(() => null);
+            throw new Error(errorBody?.message || `Erro ao verificar cliente: ${response.statusText}`);
+        } catch (error) {
+            console.error('Falha ao verificar cliente:', error);
+            showNotification(`Erro ao verificar cliente: ${error.message}`, 'error');
+            return false; // Trata outros erros como "cliente não encontrado" por segurança
+        }
+    }
+
     async function deleteCreditLimit(document, credit_type) {
         const limitToDelete = currentLimits.find(l => l.document === document && l.credit_type === credit_type);
         if (!limitToDelete) {
@@ -543,6 +565,18 @@ document.addEventListener('DOMContentLoaded', () => {
             documentoInput.readOnly = true;
             documentoInput.classList.add('bg-gray-200', 'text-gray-500');
             
+            // Verifica se o tipo de crédito do registro já existe na lista de opções.
+            const typeExists = Array.from(tipoSelect.options).some(opt => opt.value === data.credit_type);
+
+            // Se o tipo não existir, adiciona-o dinamicamente ao select.
+            // Isso garante que o valor da API sempre possa ser exibido.
+            if (!typeExists && data.credit_type) {
+                const newOption = document.createElement('option');
+                newOption.value = data.credit_type;
+                newOption.textContent = data.credit_type;
+                tipoSelect.appendChild(newOption);
+            }
+
             tipoSelect.value = data.credit_type;
             tipoSelect.disabled = true;
             tipoSelect.classList.add('bg-gray-200', 'text-gray-500'); 
@@ -849,6 +883,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const originalData = JSON.parse(isEditingInput.value);
             creditType = originalData.type;
         } else {
+            // Valida se o cliente existe antes de continuar
+            const customerExists = await checkCustomerExists(documentValue);
+            if (!customerExists) {
+                showWarningModal(`Cliente com o documento ${formatDocument(documentValue)} não encontrado na base. Não é possível criar o limite de crédito.`);
+                return;
+            }
+
             creditType = formData.get('credit_type');
             
             // A validação de duplicidade deve ser feita no backend, mas mantemos uma verificação simples

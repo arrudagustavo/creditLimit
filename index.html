@@ -1,245 +1,11 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerenciamento de Limite de Crédito</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* Estilos para responsividade da tabela em telas pequenas */
-        @media screen and (max-width: 768px) {
-            .responsive-table thead { display: none; }
-            .responsive-table tr { display: block; margin-bottom: 1rem; border-bottom: 2px solid #ddd; }
-            .responsive-table td { display: block; text-align: right; padding-left: 50%; position: relative; }
-            .responsive-table td::before { content: attr(data-label); position: absolute; left: 0.5rem; width: 45%; padding-right: 0.5rem; text-align: left; font-weight: bold; }
-        }
-        .asterisk { color: #ef4444; }
-        /* Força a cor do texto em selects desabilitados para corresponder aos inputs */
-        select:disabled {
-            color: #6b7280; /* Cor de texto cinza-500 do Tailwind */
-        }
-    </style>
-</head>
-<body class="bg-gray-100 font-sans">
-
-    <div id="loginScreen" class="container mx-auto flex items-center justify-center min-h-screen p-4">
-        <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-            <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Login</h1>
-            <form id="loginForm">
-                <div class="mb-4">
-                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input type="email" id="email" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition" required placeholder="seu@email.com">
-                </div>
-                <div class="mb-6">
-                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Senha</label>
-                    <input type="password" id="password" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition" required placeholder="********">
-                </div>
-                <button type="submit" id="loginButton" class="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-300 shadow-sm flex items-center justify-center">
-                    <span id="loginButtonText">Entrar</span>
-                    <svg id="loginSpinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <div id="app" class="container mx-auto p-4 md:p-8 hidden">
-        
-        <header class="mb-8 flex justify-between items-center">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-800">Limite de Crédito</h1>
-                <p class="text-gray-500">Gerencie os limites de crédito dos clientes.</p>
-            </div>
-            <div id="userInfo" class="text-right">
-                <p class="text-sm text-gray-700">Bem-vindo(a), <strong id="userEmailDisplay"></strong></p>
-                <button id="logoutButton" class="text-sm text-red-600 hover:underline">Sair</button>
-            </div>
-        </header>
-
-        <main class="bg-white p-6 rounded-lg shadow-md">
-            <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                <div class="relative w-full md:w-1/3">
-                    <input type="text" id="searchInput" placeholder="Buscar por Documento (CNPJ/CPF)" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
-                    <button id="searchButton" class="absolute right-0 top-0 mt-3 mr-4 text-gray-500">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    </button>
-                </div>
-                <div class="flex flex-col md:flex-row gap-2 w-full md:w-auto">
-                    <button id="extractReportButton" class="w-full md:w-auto bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition duration-300 shadow-sm">
-                        Extrair Relatório
-                    </button>
-                    <button id="addTypeButton" class="w-full md:w-auto bg-gray-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-700 transition duration-300 shadow-sm">
-                        + Novo Tipo
-                    </button>
-                    <button id="addLimitButton" class="w-full md:w-auto bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-300 shadow-sm">
-                        + Novo Limite
-                    </button>
-                </div>
-            </div>
-
-            <div class="overflow-x-auto">
-                <table class="min-w-full bg-white responsive-table">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documento</th>
-                            <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                            <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor (R$)</th>
-                            <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Saldo (R$)</th>
-                            <th class="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Ativo</th>
-                            <th class="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Sem Limite Além Saldo</th>
-                            <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Última Alteração</th>
-                            <th class="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="creditLimitTableBody" class="divide-y divide-gray-200">
-                         <tr><td colspan="8" class="text-center p-8 text-gray-500">Nenhum limite de crédito encontrado. Realize uma busca ou adicione um novo limite.</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </main>
-    </div>
-
-    <div id="formModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden">
-        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg mx-4">
-            <div class="flex justify-between items-center mb-6">
-                <h2 id="modalTitle" class="text-2xl font-bold text-gray-800">Adicionar Novo Limite</h2>
-                <button id="closeModalButton" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
-            </div>
-            <form id="creditLimitForm">
-                <input type="hidden" id="isEditing" value="">
-
-                <div class="mb-4">
-                    <label for="documento" class="block text-sm font-medium text-gray-700 mb-1">Documento (CNPJ/CPF) <span class="asterisk">*</span></label>
-                    <input type="text" id="documento" name="document" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="(somente números)" required>
-                </div>
-
-                <div class="mb-4">
-                    <label for="tipo" class="block text-sm font-medium text-gray-700 mb-1">Tipo de Limite <span class="asterisk">*</span></label>
-                    <select id="tipo" name="credit_type" class="w-full p-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                        <option value="" disabled selected>Selecione um tipo...</option>
-                        <option value="AVISTA">AVISTA</option>
-                        <option value="PRAZO_30D">PRAZO 30D</option>
-                        <option value="PRAZO_60D">PRAZO 60D</option>
-                        <option value="ESPECIAL">ESPECIAL</option>
-                    </select>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                        <label for="valor" class="block text-sm font-medium text-gray-700 mb-1">Valor do Limite (R$) <span class="asterisk">*</span></label>
-                        <input type="text" id="valor" name="value" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required placeholder="0,00">
-                    </div>
-                    <div>
-                        <label for="saldo" class="block text-sm font-medium text-gray-700 mb-1">Saldo Disponível (R$)</label>
-                        <input type="text" id="saldo" name="balance" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="0,00">
-                    </div>
-                </div>
-
-                <div class="flex items-center space-x-8 mb-6">
-                    <div class="flex items-center">
-                        <input type="checkbox" id="ativo" name="active" class="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                        <label for="ativo" class="ml-2 block text-sm text-gray-900">Ativo</label>
-                    </div>
-                    <div class="flex items-center">
-                        <input type="checkbox" id="semLimite" name="without_credit_limit" class="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                        <label for="semLimite" class="ml-2 block text-sm text-gray-900">Sem Limite Além do Saldo</label>
-                    </div>
-                </div>
-
-                <div class="flex justify-end gap-4">
-                    <button type="button" id="cancelButton" class="bg-gray-200 text-gray-800 font-bold py-2 px-6 rounded-lg hover:bg-gray-300 transition">Cancelar</button>
-                    <button type="submit" id="saveLimitButton" class="bg-gray-400 text-white font-bold py-2 px-6 rounded-lg transition cursor-not-allowed" disabled>Salvar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    
-    <div id="typeFormModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden">
-        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg mx-4">
-            <div class="flex justify-between items-center mb-6">
-                <h2 id="typeModalTitle" class="text-2xl font-bold text-gray-800">Adicionar Novo Tipo de Limite</h2>
-                <button id="closeTypeModalButton" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
-            </div>
-            <form id="creditTypeForm">
-                <div class="mb-4">
-                    <label for="typeName" class="block text-sm font-medium text-gray-700 mb-1">Nome do Tipo <span class="asterisk">*</span></label>
-                    <input type="text" id="typeName" name="name" placeholder="Ex: PRAZO 90D" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                </div>
-                <div class="mb-4">
-                    <label for="typeCode" class="block text-sm font-medium text-gray-700 mb-1">Código do Tipo <span class="asterisk">*</span></label>
-                    <input type="text" id="typeCode" name="code" placeholder="Ex: PRAZO_90D (sem espaços)" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                </div>
-                <div class="flex justify-end gap-4 mt-8">
-                    <button type="button" id="cancelTypeButton" class="bg-gray-200 text-gray-800 font-bold py-2 px-6 rounded-lg hover:bg-gray-300 transition">Cancelar</button>
-                    <button type="submit" id="saveTypeButton" class="bg-gray-400 text-white font-bold py-2 px-6 rounded-lg transition cursor-not-allowed" disabled>Salvar Tipo</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="deleteConfirmationModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden">
-        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md mx-4">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4">Confirmar Exclusão</h2>
-            <p class="text-gray-600 mb-6">Você tem certeza que deseja excluir o limite de crédito para o documento <strong id="documentToDelete" class="text-gray-900"></strong> - <strong id="typeToDelete" class="text-gray-900"></strong>.</p>
-            <div class="flex justify-end gap-4">
-                <button id="cancelDeleteButton" class="bg-gray-200 text-gray-800 font-bold py-2 px-6 rounded-lg hover:bg-gray-300 transition">Cancelar</button>
-                <button id="confirmDeleteButton" class="bg-red-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-red-700 transition">Confirmar Exclusão</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="reportModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden">
-        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg mx-4">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">Extrair Relatório de Limites</h2>
-                <button id="closeReportModalButton" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
-            </div>
-            <form id="reportForm">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div>
-                        <label for="startDate" class="block text-sm font-medium text-gray-700 mb-1">Data de Início</label>
-                        <input type="date" id="startDate" name="startDate" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                    </div>
-                    <div>
-                        <label for="endDate" class="block text-sm font-medium text-gray-700 mb-1">Data de Fim</label>
-                        <input type="date" id="endDate" name="endDate" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                    </div>
-                </div>
-                <div class="flex justify-end gap-4">
-                    <button type="button" id="cancelReportButton" class="bg-gray-200 text-gray-800 font-bold py-2 px-6 rounded-lg hover:bg-gray-300 transition">Cancelar</button>
-                    <button type="submit" id="generateReportButton" class="bg-green-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-700 transition">Gerar Relatório</button>
-                </div>
-            </form>
-            <div id="reportResult" class="mt-6 border-t pt-4 hidden">
-                 </div>
-        </div>
-    </div>
-
-    <div id="notification" class="fixed bottom-5 right-5 bg-green-500 text-white py-3 px-6 rounded-lg shadow-lg transition-opacity duration-300 opacity-0 hidden">
-        <p id="notificationMessage"></p>
-    </div>
-
-    <div id="warningModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden">
-        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md mx-4">
-            <h2 class="text-2xl font-bold text-yellow-600 mb-4">Atenção</h2>
-            <p id="warningMessage" class="text-gray-600 mb-6"></p>
-            <div class="flex justify-end">
-                <button id="closeWarningModalButton" class="bg-yellow-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-yellow-600 transition">Fechar</button>
-            </div>
-        </div>
-    </div>
-
-
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- CONFIGURAÇÕES E VARIÁVEIS GLOBAIS ---
     const API_BASE_URL = 'https://ws.sandbox.autorei.net'; 
-    let BEARER_TOKEN = ''; // Preenchido após o login
+    let BEARER_TOKEN = ''; // Preenchido após o login ou ao carregar a página
     const USE_MOCK_API = false; 
-    let LOGGED_IN_USER_EMAIL = ''; // Preenchido após o login
+    let LOGGED_IN_USER_EMAIL = ''; // Preenchido após o login ou ao carregar a página
 
     let currentLimits = [];
     let deletePayload = null;
@@ -326,21 +92,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const email = emailInput.value;
         const password = passwordInput.value;
 
-        // Simulação de login para desenvolvimento sem API
-        if (USE_MOCK_API) {
-            console.log("[MOCK] Tentativa de login para:", email);
-            setTimeout(() => {
-                BEARER_TOKEN = 'mock-token-para-desenvolvimento';
-                LOGGED_IN_USER_EMAIL = email;
-                userEmailDisplay.textContent = email;
-                loginScreen.classList.add('hidden');
-                appScreen.classList.remove('hidden');
-                loadAndRenderLimits();
-                showLoginSpinner(false);
-            }, 1000);
-            return;
-        }
-
         const loginApiUrl = `${API_BASE_URL}/oauth/token`;
         const params = new URLSearchParams();
         params.append('scope', 'trust');
@@ -366,10 +117,11 @@ document.addEventListener('DOMContentLoaded', () => {
             BEARER_TOKEN = data.access_token;
             LOGGED_IN_USER_EMAIL = email;
             
-            userEmailDisplay.textContent = email;
-            loginScreen.classList.add('hidden');
-            appScreen.classList.remove('hidden');
-            loadAndRenderLimits();
+            // *** NOVO: Salva os dados da sessão no localStorage ***
+            localStorage.setItem('authToken', BEARER_TOKEN);
+            localStorage.setItem('userEmail', LOGGED_IN_USER_EMAIL);
+            
+            showApp();
 
         } catch (error) {
             console.error('Falha no login:', error);
@@ -385,8 +137,20 @@ document.addEventListener('DOMContentLoaded', () => {
         emailInput.value = '';
         passwordInput.value = '';
         
+        // *** NOVO: Limpa os dados da sessão do localStorage ***
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userEmail');
+        
         appScreen.classList.add('hidden');
         loginScreen.classList.remove('hidden');
+    }
+
+    // *** NOVO: Função para exibir a aplicação e carregar os dados ***
+    function showApp() {
+        userEmailDisplay.textContent = LOGGED_IN_USER_EMAIL;
+        loginScreen.classList.add('hidden');
+        appScreen.classList.remove('hidden');
+        loadAndRenderLimits();
     }
 
     // --- FUNÇÕES DE LOG ---
@@ -403,23 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- FUNÇÕES DE API ---
-    const mockCreditLimits = [
-        { document: '11222333000144', credit_type: 'AVISTA', value: 10000.00, balance: 7500.50, active: true, without_credit_limit: false, last_updated: '2025-10-05T14:30:00Z' },
-        { document: '99888777000155', credit_type: 'PRAZO_30D', value: 50000.00, balance: 12345.00, active: true, without_credit_limit: true, last_updated: '2025-10-06T10:15:00Z' },
-        { document: '12345678900', credit_type: 'ESPECIAL', value: 5000.00, balance: 0, active: false, without_credit_limit: false, last_updated: '2025-09-28T09:00:00Z' }
-    ];
-
     async function fetchCreditLimits(document = '') {
-        if (USE_MOCK_API) {
-            console.log(`[MOCK] Buscando limites para documento: ${document}`);
-            if (!document) {
-                return Promise.resolve({ success: true, data: mockCreditLimits });
-            }
-            const cleanDoc = document.replace(/\D/g, '');
-            const data = mockCreditLimits.filter(limit => limit.document.includes(cleanDoc));
-            return Promise.resolve({ success: true, data: data });
-        }
-
         const url = new URL(`${API_BASE_URL}/creditLimit/list`);
         url.searchParams.append('limit', '25');
         if (document) url.searchParams.append('document', document.replace(/\D/g, ''));
@@ -438,19 +186,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function saveCreditLimit(limitData) {
         const isEditing = !!isEditingInput.value;
-        
-        if (USE_MOCK_API) {
-            const dataToSave = { ...limitData, last_updated: new Date().toISOString() };
-            const existingIndex = mockCreditLimits.findIndex(l => l.document === dataToSave.document && l.credit_type === dataToSave.credit_type);
-            if (existingIndex > -1) {
-                mockCreditLimits[existingIndex] = { ...mockCreditLimits[existingIndex], ...dataToSave };
-            } else {
-                mockCreditLimits.push(dataToSave);
-            }
-            logChange(isEditing ? 'ATUALIZOU LIMITE' : 'CRIOU LIMITE', dataToSave.document, { newValues: dataToSave });
-            return Promise.resolve({ success: true, data: dataToSave });
-        }
-        
         try {
             const response = await fetch(`${API_BASE_URL}/creditLimit/save`, { method: 'POST', headers: { 'Authorization': `Bearer ${BEARER_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify(limitData) });
             if (!response.ok) {
@@ -468,13 +203,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function saveCreditLimitType(typeData) {
-        if (USE_MOCK_API) {
-            const newType = { ...typeData, date_created: new Date().toISOString() };
-            updateCreditTypeDropdown(newType);
-            logChange('CRIOU TIPO DE LIMITE', 'N/A', { newType });
-            return Promise.resolve({ success: true, data: newType });
-        }
-        
         try {
             const response = await fetch(`${API_BASE_URL}/creditLimit/saveTypeCreditLimit`, { method: 'POST', headers: { 'Authorization': `Bearer ${BEARER_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify(typeData) });
             if (!response.ok) {
@@ -529,7 +257,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function formatDateTime(isoString) {
         if (!isoString) return 'N/A';
         try {
-            // A API pode não retornar a data, então tratamos isso
             const date = new Date(isoString);
             if (isNaN(date.getTime())) return 'N/A';
             return date.toLocaleString('pt-BR');
@@ -545,8 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        // A API real pode não ter last_updated, então ordenamos por outro campo ou mantemos a ordem
-        const sortedLimits = limits; // .sort((a, b) => new Date(b.last_updated) - new Date(a.last_updated));
+        const sortedLimits = limits;
         currentLimits = sortedLimits;
 
         sortedLimits.forEach(limit => {
@@ -820,7 +546,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-
     addLimitButton.addEventListener('click', () => openModal());
     addTypeButton.addEventListener('click', openTypeModal);
     extractReportButton.addEventListener('click', openReportModal);
@@ -889,7 +614,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             creditType = formData.get('credit_type');
             
-            // A validação de duplicidade deve ser feita no backend, mas mantemos uma verificação simples
             const alreadyExists = currentLimits.some(limit => limit.document === documentValue && limit.credit_type === creditType);
             if (alreadyExists) {
                 showWarningModal('Já existe um limite cadastrado para este documento com o tipo selecionado.');
@@ -971,9 +695,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- INICIALIZAÇÃO ---
-    // A inicialização dos dados (loadAndRenderLimits) agora ocorre após o login bem-sucedido.
+    function initialize() {
+        const storedToken = localStorage.getItem('authToken');
+        const storedEmail = localStorage.getItem('userEmail');
+
+        if (storedToken && storedEmail) {
+            BEARER_TOKEN = storedToken;
+            LOGGED_IN_USER_EMAIL = storedEmail;
+            showApp();
+        }
+    }
+    
+    initialize();
 });
 </script>
-
-</body>
-</html>

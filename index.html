@@ -90,23 +90,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const email = emailInput.value;
         const password = passwordInput.value;
 
-        // Simulação de login para desenvolvimento sem API
-        if (USE_MOCK_API) {
-            console.log("[MOCK] Tentativa de login para:", email);
-            setTimeout(() => {
-                BEARER_TOKEN = 'mock-token-para-desenvolvimento';
-                LOGGED_IN_USER_EMAIL = email;
-                localStorage.setItem('bearerToken', BEARER_TOKEN); // Armazena o token
-                localStorage.setItem('userEmail', LOGGED_IN_USER_EMAIL); // Armazena o email
-                userEmailDisplay.textContent = email;
-                loginScreen.classList.add('hidden');
-                appScreen.classList.remove('hidden');
-                loadAndRenderLimits();
-                showLoginSpinner(false);
-            }, 1000);
-            return;
-        }
-
         const loginApiUrl = `${API_BASE_URL}/oauth/token`;
         const params = new URLSearchParams();
         params.append('scope', 'trust');
@@ -125,7 +108,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (!response.ok) {
-                throw new Error('Email ou senha inválidos.');
+                const errorBody = await response.json();
+                throw new Error(errorBody.message || 'Email ou senha inválidos.');
             }
 
             const data = await response.json();
@@ -134,11 +118,15 @@ document.addEventListener('DOMContentLoaded', () => {
             
             localStorage.setItem('bearerToken', BEARER_TOKEN); // Armazena o token
             localStorage.setItem('userEmail', LOGGED_IN_USER_EMAIL); // Armazena o email
+            if (data.expires_in) {
+                const expiryDate = new Date().getTime() + data.expires_in * 1000;
+                localStorage.setItem('tokenExpiry', expiryDate); // Armazena a expiração
+            }
             
             userEmailDisplay.textContent = email;
             loginScreen.classList.add('hidden');
             appScreen.classList.remove('hidden');
-            loadAndRenderLimits();
+            await loadAndRenderLimits();
 
         } catch (error) {
             console.error('Falha no login:', error);
@@ -153,6 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
         LOGGED_IN_USER_EMAIL = '';
         localStorage.removeItem('bearerToken'); // Remove o token
         localStorage.removeItem('userEmail'); // Remove o email
+        localStorage.removeItem('tokenExpiry'); // Remove a expiração
         emailInput.value = '';
         passwordInput.value = '';
         
@@ -164,16 +153,26 @@ document.addEventListener('DOMContentLoaded', () => {
     async function checkTokenValidity() {
         if (!BEARER_TOKEN) return false;
 
-        if (USE_MOCK_API) {
-            return true; // Simulação: assume que o token é válido
+        // Verifica se o token expirou
+        const tokenExpiry = localStorage.getItem('tokenExpiry');
+        if (tokenExpiry && new Date().getTime() > tokenExpiry) {
+            console.log('Token expirado');
+            return false;
         }
 
         try {
-            // Exemplo: Fazer uma chamada para um endpoint da API que valida o token
             const response = await fetch(`${API_BASE_URL}/creditLimit/list`, {
-                headers: { 'Authorization': `Bearer ${BEARER_TOKEN}`, 'Content-Type': 'application/json' }
+                headers: { 
+                    'Authorization': `Bearer ${BEARER_TOKEN}`, 
+                    'Content-Type': 'application/json' 
+                }
             });
-            return response.ok; // Se a resposta for OK, o token é válido
+            if (!response.ok) {
+                const errorBody = await response.json();
+                console.error('Erro ao validar token:', errorBody.message || response.statusText);
+                return false;
+            }
+            return true; // Token válido
         } catch (error) {
             console.error('Erro ao verificar token:', error);
             return false;
@@ -188,9 +187,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 userEmailDisplay.textContent = LOGGED_IN_USER_EMAIL;
                 loginScreen.classList.add('hidden');
                 appScreen.classList.remove('hidden');
-                loadAndRenderLimits();
+                await loadAndRenderLimits();
             } else {
-                handleLogout(); // Token inválido, força logout
+                handleLogout(); // Token inválido ou expirado, força logout
             }
         }
     }
@@ -209,30 +208,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- FUNÇÕES DE API ---
-    const mockCreditLimits = [
-        { document: '11222333000144', credit_type: 'AVISTA', value: 10000.00, balance: 7500.50, active: true, without_credit_limit: false, last_updated: '2025-10-05T14:30:00Z' },
-        { document: '99888777000155', credit_type: 'PRAZO_30D', value: 50000.00, balance: 12345.00, active: true, without_credit_limit: true, last_updated: '2025-10-06T10:15:00Z' },
-        { document: '12345678900', credit_type: 'ESPECIAL', value: 5000.00, balance: 0, active: false, without_credit_limit: false, last_updated: '2025-09-28T09:00:00Z' }
-    ];
-
     async function fetchCreditLimits(document = '') {
-        if (USE_MOCK_API) {
-            console.log(`[MOCK] Buscando limites para documento: ${document}`);
-            if (!document) {
-                return Promise.resolve({ success: true, data: mockCreditLimits });
-            }
-            const cleanDoc = document.replace(/\D/g, '');
-            const data = mockCreditLimits.filter(limit => limit.document.includes(cleanDoc));
-            return Promise.resolve({ success: true, data: data });
-        }
-
         const url = new URL(`${API_BASE_URL}/creditLimit/list`);
         url.searchParams.append('limit', '25');
         if (document) url.searchParams.append('document', document.replace(/\D/g, ''));
 
         try {
-            const response = await fetch(url, { headers: { 'Authorization': `Bearer ${BEARER_TOKEN}`, 'Content-Type': 'application/json' } });
-            if (!response.ok) throw new Error(`Erro na API: ${response.statusText}`);
+            const response = await fetch(url, { 
+                headers: { 
+                    'Authorization': `Bearer ${BEARER_TOKEN}`, 
+                    'Content-Type': 'application/json' 
+                } 
+            });
+            if (!response.ok) {
+                const errorBody = await response.json();
+                throw new Error(errorBody.message || `Erro na API: ${response.statusText}`);
+            }
             const data = await response.json();
             return { success: true, data };
         } catch (error) {
@@ -244,18 +235,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function saveCreditLimit(limitData) {
         const isEditing = !!isEditingInput.value;
-        
-        if (USE_MOCK_API) {
-            const dataToSave = { ...limitData, last_updated: new Date().toISOString() };
-            const existingIndex = mockCreditLimits.findIndex(l => l.document === dataToSave.document && l.credit_type === dataToSave.credit_type);
-            if (existingIndex > -1) {
-                mockCreditLimits[existingIndex] = { ...mockCreditLimits[existingIndex], ...dataToSave };
-            } else {
-                mockCreditLimits.push(dataToSave);
-            }
-            logChange(isEditing ? 'ATUALIZOU LIMITE' : 'CRIOU LIMITE', dataToSave.document, { newValues: dataToSave });
-            return Promise.resolve({ success: true, data: dataToSave });
-        }
         
         try {
             const response = await fetch(`${API_BASE_URL}/creditLimit/save`, { 
@@ -281,13 +260,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function saveCreditLimitType(typeData) {
-        if (USE_MOCK_API) {
-            const newType = { ...typeData, date_created: new Date().toISOString() };
-            updateCreditTypeDropdown(newType);
-            logChange('CRIOU TIPO DE LIMITE', 'N/A', { newType });
-            return Promise.resolve({ success: true, data: newType });
-        }
-        
         try {
             const response = await fetch(`${API_BASE_URL}/creditLimit/saveTypeCreditLimit`, { 
                 method: 'POST', 
@@ -330,13 +302,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- FUNÇÕES DE RENDERIZAÇÃO E UI ---
     function formatDocument(doc) {
         if (!doc) return '';
-        const cleanDoc = doc.replace(/\D/g, '');
+        const cleanDoc = cleanDocument(doc);
         if (cleanDoc.length === 11) return cleanDoc.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
         if (cleanDoc.length === 14) return cleanDoc.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
         return doc;
     }
 
+    function cleanDocument(doc) {
+        return doc.replace(/\D/g, '');
+    }
+
     function formatCurrency(value) {
+        if (value === null || value === undefined) return formatCurrency(0);
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
     }
     
@@ -368,27 +345,36 @@ document.addEventListener('DOMContentLoaded', () => {
         currentLimits = sortedLimits;
 
         sortedLimits.forEach(limit => {
-            const row = document.createElement('tr');
-            row.className = 'hover:bg-gray-50';
-            row.innerHTML = `
-                <td class="py-4 px-4 whitespace-nowrap text-sm font-medium text-gray-900" data-label="Documento">${formatDocument(limit.document)}</td>
-                <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500" data-label="Tipo">${limit.credit_type}</td>
-                <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500" data-label="Valor">${formatCurrency(limit.value)}</td>
-                <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500" data-label="Saldo">${formatCurrency(limit.balance)}</td>
-                <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500 text-center" data-label="Ativo">${formatBoolean(limit.active)}</td>
-                <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500 text-center" data-label="Sem Limite">${formatBoolean(limit.without_credit_limit)}</td>
-                <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500" data-label="Última Alteração">${formatDateTime(limit.last_updated || limit.date_created)}</td>
-                <td class="py-4 px-4 whitespace-nowrap text-sm font-medium text-center" data-label="Ações">
-                    <button class="edit-btn text-indigo-600 hover:text-indigo-900" data-document="${limit.document}" data-type="${limit.credit_type}">Editar</button>
-                    <button class="delete-btn text-red-600 hover:text-red-900 ml-4" data-document="${limit.document}" data-type="${limit.credit_type}">Excluir</button>
-                </td>`;
-            tableBody.appendChild(row);
+            try {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="py-4 px-4 whitespace-nowrap text-sm font-medium text-gray-900" data-label="Documento">${formatDocument(limit.document)}</td>
+                    <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500" data-label="Tipo">${limit.credit_type || 'N/A'}</td>
+                    <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500" data-label="Valor">${formatCurrency(limit.value)}</td>
+                    <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500" data-label="Saldo">${formatCurrency(limit.balance)}</td>
+                    <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500 text-center" data-label="Ativo">${formatBoolean(limit.active)}</td>
+                    <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500 text-center" data-label="Sem Limite">${formatBoolean(limit.without_credit_limit)}</td>
+                    <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500" data-label="Última Alteração">${formatDateTime(limit.last_updated || limit.date_created)}</td>
+                    <td class="py-4 px-4 whitespace-nowrap text-sm font-medium text-center" data-label="Ações">
+                        <button class="edit-btn text-indigo-600 hover:text-indigo-900" data-document="${limit.document}" data-type="${limit.credit_type || ''}">Editar</button>
+                        <button class="delete-btn text-red-600 hover:text-red-900 ml-4" data-document="${limit.document}" data-type="${limit.credit_type || ''}">Excluir</button>
+                    </td>`;
+                tableBody.appendChild(row);
+            } catch (error) {
+                console.error('Erro ao renderizar linha da tabela:', error, { limit });
+                showNotification('Erro ao renderizar tabela. Verifique os dados retornados.', 'error');
+            }
         });
     }
 
     async function loadAndRenderLimits(document = '') {
         const result = await fetchCreditLimits(document);
-        if (result.success) renderTable(result.data);
+        if (result.success) {
+            renderTable(result.data);
+        } else {
+            showNotification('Não foi possível carregar os limites de crédito.', 'error');
+        }
     }
 
     function openModal(data = null) {
@@ -401,14 +387,14 @@ document.addEventListener('DOMContentLoaded', () => {
             documentoInput.value = data.document;
             documentoInput.readOnly = true;
             documentoInput.classList.add('bg-gray-200', 'text-gray-500');
-            tipoSelect.value = data.credit_type;
+            tipoSelect.value = data.credit_type || '';
             tipoSelect.disabled = true;
             tipoSelect.classList.add('bg-gray-200', 'text-gray-500'); 
             valorInput.value = (data.value || 0).toFixed(2).replace('.', ',');
             saldoInput.value = (parseFloat(data.balance) || 0).toFixed(2).replace('.', ',');
-            document.getElementById('ativo').checked = data.active;
-            document.getElementById('semLimite').checked = data.without_credit_limit;
-            isEditingInput.value = JSON.stringify({ document: data.document, type: data.credit_type });
+            document.getElementById('ativo').checked = !!data.active;
+            document.getElementById('semLimite').checked = !!data.without_credit_limit;
+            isEditingInput.value = JSON.stringify({ document: data.document, type: data.credit_type || '' });
         } else { 
             modalTitle.textContent = 'Adicionar Novo Limite';
             documentoInput.readOnly = false;
@@ -432,7 +418,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function openDeleteModal(doc, type) {
         deletePayload = { doc, type };
         documentToDeleteSpan.textContent = formatDocument(doc);
-        typeToDeleteSpan.textContent = type;
+        typeToDeleteSpan.textContent = type || 'N/A';
         deleteConfirmationModal.classList.remove('hidden');
     }
     function closeDeleteModal() { deleteConfirmationModal.classList.add('hidden'); }
@@ -458,8 +444,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateCreditTypeDropdown(newType) {
         const newOption = document.createElement('option');
-        newOption.value = newType.code;
-        newOption.textContent = newType.name;
+        newOption.value = newType.code || '';
+        newOption.textContent = newType.name || '';
         tipoSelect.appendChild(newOption);
     }
 
@@ -479,7 +465,7 @@ document.addEventListener('DOMContentLoaded', () => {
         reportResultDiv.innerHTML = '';
         reportResultDiv.classList.remove('hidden');
 
-        if (data.length === 0) {
+        if (!data || data.length === 0) {
             reportResultDiv.innerHTML = '<p class="text-center text-gray-500">Nenhum registro encontrado para o período selecionado.</p>';
             return;
         }
@@ -508,7 +494,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tableHTML += `
                 <tr class="border-b">
                     <td class="p-2">${formatDocument(limit.document)}</td>
-                    <td class="p-2">${limit.credit_type}</td>
+                    <td class="p-2">${limit.credit_type || 'N/A'}</td>
                     <td class="p-2">${formatCurrency(limit.value)}</td>
                     <td class="p-2">${formatCurrency(limit.balance)}</td>
                     <td class="p-2 text-center">${formatBoolean(limit.active)}</td>
@@ -537,9 +523,9 @@ document.addEventListener('DOMContentLoaded', () => {
         data.forEach(limit => {
             const row = [
                 `'${limit.document}'`,
-                limit.credit_type,
-                limit.value,
-                limit.balance,
+                limit.credit_type || 'N/A',
+                limit.value || 0,
+                limit.balance || 0,
                 limit.active,
                 limit.without_credit_limit,
                 formatDateTime(limit.last_updated || limit.date_created)
@@ -561,7 +547,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- FUNÇÕES DE VALIDAÇÃO E FORMATAÇÃO ---
     function validateDocumentInput(inputElement) {
-        const value = inputElement.value.replace(/\D/g, '');
+        const value = cleanDocument(inputElement.value);
         if (value.length > 0 && value.length !== 11 && value.length !== 14) {
             inputElement.classList.add('border-red-500');
             return false;
@@ -628,7 +614,9 @@ document.addEventListener('DOMContentLoaded', () => {
     loginForm.addEventListener('submit', handleLogin);
     logoutButton.addEventListener('click', handleLogout);
 
-    searchButton.addEventListener('click', () => { if (validateDocumentInput(searchInput)) loadAndRenderLimits(searchInput.value); });
+    searchButton.addEventListener('click', () => { 
+        if (validateDocumentInput(searchInput)) loadAndRenderLimits(searchInput.value); 
+    });
     searchInput.addEventListener('keyup', (e) => {
         validateDocumentInput(searchInput);
         if (e.key === 'Enter' && searchInput.value.trim() !== '' && validateDocumentInput(searchInput)) {
@@ -697,7 +685,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        const documentValue = formData.get('document').replace(/\D/g, '');
+        const documentValue = cleanDocument(formData.get('document'));
         let creditType;
         
         if (isEditing) {

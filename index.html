@@ -1,14 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciamento de Limite de Crédito</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos para responsividade da tabela em telas pequenas */
+        @media screen and (max-width: 768px) {
+            .responsive-table thead { display: none; }
+            .responsive-table tr { display: block; margin-bottom: 1rem; border-bottom: 2px solid #ddd; }
+            .responsive-table td { display: block; text-align: right; padding-left: 50%; position: relative; }
+            .responsive-table td::before { content: attr(data-label); position: absolute; left: 0.5rem; width: 45%; padding-right: 0.5rem; text-align: left; font-weight: bold; }
+        }
+        .asterisk { color: #ef4444; }
+        /* Força a cor do texto em selects desabilitados para corresponder aos inputs */
+        select:disabled {
+            color: #6b7280; /* Cor de texto cinza-500 do Tailwind */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <div id="loginScreen" class="container mx-auto flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+            <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Login</h1>
+            <form id="loginForm">
+                <div class="mb-4">
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" id="email" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition" required placeholder="seu@email.com">
+                </div>
+                <div class="mb-6">
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+                    <input type="password" id="password" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition" required placeholder="********">
+                </div>
+                <button type="submit" id="loginButton" class="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-300 shadow-sm flex items-center justify-center">
+                    <span id="loginButtonText">Entrar</span>
+                    <svg id="loginSpinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="app" class="container mx-auto p-4 md:p-8 hidden">
+        
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">Limite de Crédito</h1>
+                <p class="text-gray-500">Gerencie os limites de crédito dos clientes.</p>
+            </div>
+            <div id="userInfo" class="text-right">
+                <p class="text-sm text-gray-700">Bem-vindo(a), <strong id="userEmailDisplay"></strong></p>
+                <button id="logoutButton" class="text-sm text-red-600 hover:underline">Sair</button>
+            </div>
+        </header>
+
+        <main class="bg-white p-6 rounded-lg shadow-md">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                <div class="relative w-full md:w-1/3">
+                    <input type="text" id="searchInput" placeholder="Buscar por Documento (CNPJ/CPF)" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+                    <button id="searchButton" class="absolute right-0 top-0 mt-3 mr-4 text-gray-500">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </button>
+                </div>
+                <div class="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                    <button id="extractReportButton" class="w-full md:w-auto bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition duration-300 shadow-sm">
+                        Extrair Relatório
+                    </button>
+                    <button id="addTypeButton" class="w-full md:w-auto bg-gray-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-700 transition duration-300 shadow-sm">
+                        + Novo Tipo
+                    </button>
+                    <button id="addLimitButton" class="w-full md:w-auto bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-300 shadow-sm">
+                        + Novo Limite
+                    </button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white responsive-table">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documento</th>
+                            <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                            <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor (R$)</th>
+                            <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Saldo (R$)</th>
+                            <th class="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Ativo</th>
+                            <th class="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Sem Limite Além Saldo</th>
+                            <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Última Alteração</th>
+                            <th class="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="creditLimitTableBody" class="divide-y divide-gray-200">
+                         <tr><td colspan="8" class="text-center p-8 text-gray-500">Nenhum limite de crédito encontrado. Realize uma busca ou adicione um novo limite.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <div id="formModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="modalTitle" class="text-2xl font-bold text-gray-800">Adicionar Novo Limite</h2>
+                <button id="closeModalButton" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
+            </div>
+            <form id="creditLimitForm">
+                <input type="hidden" id="isEditing" value="">
+
+                <div class="mb-4">
+                    <label for="documento" class="block text-sm font-medium text-gray-700 mb-1">Documento (CNPJ/CPF) <span class="asterisk">*</span></label>
+                    <input type="text" id="documento" name="document" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="(somente números)" required>
+                </div>
+
+                <div class="mb-4">
+                    <label for="tipo" class="block text-sm font-medium text-gray-700 mb-1">Tipo de Limite <span class="asterisk">*</span></label>
+                    <select id="tipo" name="credit_type" class="w-full p-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        <option value="" disabled selected>Selecione um tipo...</option>
+                        <option value="AVISTA">AVISTA</option>
+                        <option value="PRAZO_30D">PRAZO 30D</option>
+                        <option value="PRAZO_60D">PRAZO 60D</option>
+                        <option value="ESPECIAL">ESPECIAL</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="valor" class="block text-sm font-medium text-gray-700 mb-1">Valor do Limite (R$) <span class="asterisk">*</span></label>
+                        <input type="text" id="valor" name="value" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required placeholder="0,00">
+                    </div>
+                    <div>
+                        <label for="saldo" class="block text-sm font-medium text-gray-700 mb-1">Saldo Disponível (R$)</label>
+                        <input type="text" id="saldo" name="balance" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="0,00">
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-8 mb-6">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="ativo" name="active" class="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <label for="ativo" class="ml-2 block text-sm text-gray-900">Ativo</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="semLimite" name="without_credit_limit" class="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <label for="semLimite" class="ml-2 block text-sm text-gray-900">Sem Limite Além do Saldo</label>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-4">
+                    <button type="button" id="cancelButton" class="bg-gray-200 text-gray-800 font-bold py-2 px-6 rounded-lg hover:bg-gray-300 transition">Cancelar</button>
+                    <button type="submit" id="saveLimitButton" class="bg-gray-400 text-white font-bold py-2 px-6 rounded-lg transition cursor-not-allowed" disabled>Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="typeFormModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="typeModalTitle" class="text-2xl font-bold text-gray-800">Adicionar Novo Tipo de Limite</h2>
+                <button id="closeTypeModalButton" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
+            </div>
+            <form id="creditTypeForm">
+                <div class="mb-4">
+                    <label for="typeName" class="block text-sm font-medium text-gray-700 mb-1">Nome do Tipo <span class="asterisk">*</span></label>
+                    <input type="text" id="typeName" name="name" placeholder="Ex: PRAZO 90D" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div class="mb-4">
+                    <label for="typeCode" class="block text-sm font-medium text-gray-700 mb-1">Código do Tipo <span class="asterisk">*</span></label>
+                    <input type="text" id="typeCode" name="code" placeholder="Ex: PRAZO_90D (sem espaços)" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div class="flex justify-end gap-4 mt-8">
+                    <button type="button" id="cancelTypeButton" class="bg-gray-200 text-gray-800 font-bold py-2 px-6 rounded-lg hover:bg-gray-300 transition">Cancelar</button>
+                    <button type="submit" id="saveTypeButton" class="bg-gray-400 text-white font-bold py-2 px-6 rounded-lg transition cursor-not-allowed" disabled>Salvar Tipo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="deleteConfirmationModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md mx-4">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Confirmar Exclusão</h2>
+            <p class="text-gray-600 mb-6">Você tem certeza que deseja excluir o limite de crédito para o documento <strong id="documentToDelete" class="text-gray-900"></strong> - <strong id="typeToDelete" class="text-gray-900"></strong>.</p>
+            <div class="flex justify-end gap-4">
+                <button id="cancelDeleteButton" class="bg-gray-200 text-gray-800 font-bold py-2 px-6 rounded-lg hover:bg-gray-300 transition">Cancelar</button>
+                <button id="confirmDeleteButton" class="bg-red-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-red-700 transition">Confirmar Exclusão</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="reportModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Extrair Relatório de Limites</h2>
+                <button id="closeReportModalButton" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
+            </div>
+            <form id="reportForm">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label for="startDate" class="block text-sm font-medium text-gray-700 mb-1">Data de Início</label>
+                        <input type="date" id="startDate" name="startDate" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                    <div>
+                        <label for="endDate" class="block text-sm font-medium text-gray-700 mb-1">Data de Fim</label>
+                        <input type="date" id="endDate" name="endDate" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-4">
+                    <button type="button" id="cancelReportButton" class="bg-gray-200 text-gray-800 font-bold py-2 px-6 rounded-lg hover:bg-gray-300 transition">Cancelar</button>
+                    <button type="submit" id="generateReportButton" class="bg-green-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-700 transition">Gerar Relatório</button>
+                </div>
+            </form>
+            <div id="reportResult" class="mt-6 border-t pt-4 hidden">
+                 </div>
+        </div>
+    </div>
+
+    <div id="notification" class="fixed bottom-5 right-5 bg-green-500 text-white py-3 px-6 rounded-lg shadow-lg transition-opacity duration-300 opacity-0 hidden">
+        <p id="notificationMessage"></p>
+    </div>
+
+    <div id="warningModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md mx-4">
+            <h2 class="text-2xl font-bold text-yellow-600 mb-4">Atenção</h2>
+            <p id="warningMessage" class="text-gray-600 mb-6"></p>
+            <div class="flex justify-end">
+                <button id="closeWarningModalButton" class="bg-yellow-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-yellow-600 transition">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- 1. CONFIGURAÇÕES E SELEÇÃO DE ELEMENTOS DO DOM ---
-    const API_BASE_URL = 'https://ws.sandbox.autorei.net';
-    let BEARER_TOKEN = '';
-    let LOGGED_IN_USER_EMAIL = '';
+    // --- CONFIGURAÇÕES E VARIÁVEIS GLOBAIS ---
+    const API_BASE_URL = 'https://ws.sandbox.autorei.net'; 
+    let BEARER_TOKEN = ''; // Preenchido após o login
+    const USE_MOCK_API = false; 
+    let LOGGED_IN_USER_EMAIL = ''; // Preenchido após o login
+
     let currentLimits = [];
     let deletePayload = null;
 
-    // ... (O restante das declarações de variáveis de elementos do DOM permanece o mesmo)
+    // --- ELEMENTOS DO DOM (TELA PRINCIPAL) ---
     const appScreen = document.getElementById('app');
     const searchInput = document.getElementById('searchInput');
     const searchButton = document.getElementById('searchButton');
@@ -18,6 +254,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const userEmailDisplay = document.getElementById('userEmailDisplay');
     const logoutButton = document.getElementById('logoutButton');
     const extractReportButton = document.getElementById('extractReportButton');
+    
+    // --- ELEMENTOS DO DOM (LOGIN) ---
     const loginScreen = document.getElementById('loginScreen');
     const loginForm = document.getElementById('loginForm');
     const emailInput = document.getElementById('email');
@@ -25,6 +263,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginButton = document.getElementById('loginButton');
     const loginButtonText = document.getElementById('loginButtonText');
     const loginSpinner = document.getElementById('loginSpinner');
+    
+    // --- ELEMENTOS DO DOM (MODAIS) ---
     const formModal = document.getElementById('formModal');
     const modalTitle = document.getElementById('modalTitle');
     const closeModalButton = document.getElementById('closeModalButton');
@@ -36,6 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const tipoSelect = document.getElementById('tipo');
     const valorInput = document.getElementById('valor');
     const saldoInput = document.getElementById('saldo');
+
     const typeFormModal = document.getElementById('typeFormModal');
     const closeTypeModalButton = document.getElementById('closeTypeModalButton');
     const cancelTypeButton = document.getElementById('cancelTypeButton');
@@ -43,11 +284,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const typeNameInput = document.getElementById('typeName');
     const typeCodeInput = document.getElementById('typeCode');
     const saveTypeButton = document.getElementById('saveTypeButton');
+
     const deleteConfirmationModal = document.getElementById('deleteConfirmationModal');
     const documentToDeleteSpan = document.getElementById('documentToDelete');
     const typeToDeleteSpan = document.getElementById('typeToDelete');
     const cancelDeleteButton = document.getElementById('cancelDeleteButton');
     const confirmDeleteButton = document.getElementById('confirmDeleteButton');
+
     const reportModal = document.getElementById('reportModal');
     const closeReportModalButton = document.getElementById('closeReportModalButton');
     const cancelReportButton = document.getElementById('cancelReportButton');
@@ -55,50 +298,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const startDateInput = document.getElementById('startDate');
     const endDateInput = document.getElementById('endDate');
     const reportResultDiv = document.getElementById('reportResult');
+    
     const notification = document.getElementById('notification');
     const notificationMessage = document.getElementById('notificationMessage');
+    
     const warningModal = document.getElementById('warningModal');
     const warningMessage = document.getElementById('warningMessage');
     const closeWarningModalButton = document.getElementById('closeWarningModalButton');
 
-    // --- 2. DEFINIÇÃO DE TODAS AS FUNÇÕES ---
-
-    function initialize() {
-        console.log("Inicializando a aplicação...");
-        const storedToken = localStorage.getItem('authToken');
-        const storedEmail = localStorage.getItem('userEmail');
-        
-        // NOVO: Adicionando logs para depuração
-        console.log("Token lido do localStorage:", storedToken);
-        console.log("Email lido do localStorage:", storedEmail);
-
-        if (storedToken && storedEmail) {
-            console.log("Sessão encontrada. Exibindo a aplicação.");
-            BEARER_TOKEN = storedToken;
-            LOGGED_IN_USER_EMAIL = storedEmail;
-            showApp();
-        } else {
-            console.log("Nenhuma sessão encontrada. Exibindo tela de login.");
-            showLogin();
-        }
-    }
-
-    function showApp() {
-        userEmailDisplay.textContent = LOGGED_IN_USER_EMAIL;
-        loginScreen.classList.add('hidden');
-        appScreen.classList.remove('hidden');
-        loadAndRenderLimits();
-    }
+    // --- FUNÇÕES DE LOGIN/LOGOUT ---
     
-    function showLogin() {
-        appScreen.classList.add('hidden');
-        loginScreen.classList.remove('hidden');
-    }
-
     function showLoginSpinner(show) {
-        loginButton.disabled = show;
-        loginButtonText.classList.toggle('hidden', show);
-        loginSpinner.classList.toggle('hidden', !show);
+        if (show) {
+            loginButtonText.classList.add('hidden');
+            loginSpinner.classList.remove('hidden');
+            loginButton.disabled = true;
+        } else {
+            loginButtonText.classList.remove('hidden');
+            loginSpinner.classList.add('hidden');
+            loginButton.disabled = false;
+        }
     }
 
     async function handleLogin(e) {
@@ -106,27 +325,54 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoginSpinner(true);
         const email = emailInput.value;
         const password = passwordInput.value;
+
+        // Simulação de login para desenvolvimento sem API
+        if (USE_MOCK_API) {
+            console.log("[MOCK] Tentativa de login para:", email);
+            setTimeout(() => {
+                BEARER_TOKEN = 'mock-token-para-desenvolvimento';
+                LOGGED_IN_USER_EMAIL = email;
+                userEmailDisplay.textContent = email;
+                loginScreen.classList.add('hidden');
+                appScreen.classList.remove('hidden');
+                loadAndRenderLimits();
+                showLoginSpinner(false);
+            }, 1000);
+            return;
+        }
+
         const loginApiUrl = `${API_BASE_URL}/oauth/token`;
-        const params = new URLSearchParams({ scope: 'trust', grant_type: 'password', username: email, password: password });
+        const params = new URLSearchParams();
+        params.append('scope', 'trust');
+        params.append('grant_type', 'password');
+        params.append('username', email);
+        params.append('password', password);
+
         try {
             const response = await fetch(loginApiUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Basic YXBpLXdzOnBhc3N3b3JkLW1hc3Rlcg==' },
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Authorization': 'Basic YXBpLXdzOnBhc3N3b3JkLW1hc3Rlcg=='
+                },
                 body: params
             });
-            if (!response.ok) throw new Error('Email ou senha inválidos.');
+
+            if (!response.ok) {
+                throw new Error('Email ou senha inválidos.');
+            }
+
             const data = await response.json();
             BEARER_TOKEN = data.access_token;
             LOGGED_IN_USER_EMAIL = email;
+            
+            userEmailDisplay.textContent = email;
+            loginScreen.classList.add('hidden');
+            appScreen.classList.remove('hidden');
+            loadAndRenderLimits();
 
-            // NOVO: Adicionando logs para depuração
-            console.log("Login bem-sucedido. Salvando no localStorage...");
-            localStorage.setItem('authToken', BEARER_TOKEN);
-            localStorage.setItem('userEmail', LOGGED_IN_USER_EMAIL);
-            console.log("Token salvo:", localStorage.getItem('authToken'));
-
-            showApp();
         } catch (error) {
+            console.error('Falha no login:', error);
             showNotification(error.message, 'error');
         } finally {
             showLoginSpinner(false);
@@ -134,168 +380,236 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleLogout() {
-        console.log("Executando logout.");
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('userEmail');
         BEARER_TOKEN = '';
         LOGGED_IN_USER_EMAIL = '';
-        showLogin();
+        emailInput.value = '';
+        passwordInput.value = '';
+        
+        appScreen.classList.add('hidden');
+        loginScreen.classList.remove('hidden');
     }
 
+    // --- FUNÇÕES DE LOG ---
+    function logChange(action, document, details = {}) {
+        const timestamp = new Date().toLocaleString('pt-BR');
+        const logEntry = {
+            user: LOGGED_IN_USER_EMAIL,
+            action,
+            clientDocument: document,
+            details,
+            timestamp
+        };
+        console.log('LOG:', logEntry);
+    }
+
+    // --- FUNÇÕES DE API ---
+    const mockCreditLimits = [
+        { document: '11222333000144', credit_type: 'AVISTA', value: 10000.00, balance: 7500.50, active: true, without_credit_limit: false, last_updated: '2025-10-05T14:30:00Z' },
+        { document: '99888777000155', credit_type: 'PRAZO_30D', value: 50000.00, balance: 12345.00, active: true, without_credit_limit: true, last_updated: '2025-10-06T10:15:00Z' },
+        { document: '12345678900', credit_type: 'ESPECIAL', value: 5000.00, balance: 0, active: false, without_credit_limit: false, last_updated: '2025-09-28T09:00:00Z' }
+    ];
+
     async function fetchCreditLimits(document = '') {
-        // NOVO: Adicionando log para depurar a chamada da API
-        console.log(`Buscando limites com o token: Bearer ${BEARER_TOKEN}`);
+        if (USE_MOCK_API) {
+            console.log(`[MOCK] Buscando limites para documento: ${document}`);
+            if (!document) {
+                return Promise.resolve({ success: true, data: mockCreditLimits });
+            }
+            const cleanDoc = document.replace(/\D/g, '');
+            const data = mockCreditLimits.filter(limit => limit.document.includes(cleanDoc));
+            return Promise.resolve({ success: true, data: data });
+        }
 
         const url = new URL(`${API_BASE_URL}/creditLimit/list`);
         url.searchParams.append('limit', '25');
         if (document) url.searchParams.append('document', document.replace(/\D/g, ''));
+
         try {
-            const response = await fetch(url, { headers: { 'Authorization': `Bearer ${BEARER_TOKEN}` } });
-            if (!response.ok) {
-                // Log específico para erro de autorização
-                if(response.status === 401) {
-                    console.error("Erro de autorização (401). O token pode ser inválido ou expirado.");
-                    showNotification('Sua sessão expirou. Por favor, faça login novamente.', 'error');
-                    handleLogout();
-                }
-                throw new Error(`Erro na API: ${response.statusText}`);
-            }
-            return { success: true, data: await response.json() };
+            const response = await fetch(url, { headers: { 'Authorization': `Bearer ${BEARER_TOKEN}`, 'Content-Type': 'application/json' } });
+            if (!response.ok) throw new Error(`Erro na API: ${response.statusText}`);
+            const data = await response.json();
+            return { success: true, data };
         } catch (error) {
-            if (error.message.includes('401')) return { success: false, data: [] };
-            showNotification(`Erro ao buscar limites: ${error.message}`, 'error');
+            console.error('Falha ao buscar limites:', error);
+            showNotification(`Erro ao buscar: ${error.message}`, 'error');
             return { success: false, data: [] };
         }
     }
 
-    // ... (O restante de todas as outras funções permanece o mesmo)
     async function saveCreditLimit(limitData) {
+        const isEditing = !!isEditingInput.value;
+        
+        if (USE_MOCK_API) {
+            const dataToSave = { ...limitData, last_updated: new Date().toISOString() };
+            const existingIndex = mockCreditLimits.findIndex(l => l.document === dataToSave.document && l.credit_type === dataToSave.credit_type);
+            if (existingIndex > -1) {
+                mockCreditLimits[existingIndex] = { ...mockCreditLimits[existingIndex], ...dataToSave };
+            } else {
+                mockCreditLimits.push(dataToSave);
+            }
+            logChange(isEditing ? 'ATUALIZOU LIMITE' : 'CRIOU LIMITE', dataToSave.document, { newValues: dataToSave });
+            return Promise.resolve({ success: true, data: dataToSave });
+        }
+        
         try {
             const response = await fetch(`${API_BASE_URL}/creditLimit/save`, { method: 'POST', headers: { 'Authorization': `Bearer ${BEARER_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify(limitData) });
-            if (!response.ok) throw new Error((await response.json()).message || 'Erro ao salvar limite.');
-            return { success: true, data: await response.json() };
+            if (!response.ok) {
+                 const errorBody = await response.json();
+                 throw new Error(errorBody.message || `Erro na API: ${response.statusText}`);
+            }
+            const data = await response.json();
+            logChange(isEditing ? 'ATUALIZOU LIMITE' : 'CRIOU LIMITE', data.document, { newValues: data });
+            return { success: true, data };
         } catch (error) {
-            showNotification(`Erro: ${error.message}`, 'error');
+            console.error('Falha ao salvar limite:', error);
+            showNotification(`Erro ao salvar: ${error.message}`, 'error');
             return { success: false };
         }
     }
-
+    
     async function saveCreditLimitType(typeData) {
+        if (USE_MOCK_API) {
+            const newType = { ...typeData, date_created: new Date().toISOString() };
+            updateCreditTypeDropdown(newType);
+            logChange('CRIOU TIPO DE LIMITE', 'N/A', { newType });
+            return Promise.resolve({ success: true, data: newType });
+        }
+        
         try {
             const response = await fetch(`${API_BASE_URL}/creditLimit/saveTypeCreditLimit`, { method: 'POST', headers: { 'Authorization': `Bearer ${BEARER_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify(typeData) });
-            if (!response.ok) throw new Error((await response.json()).message || 'Erro ao salvar tipo.');
+            if (!response.ok) {
+                const errorBody = await response.json();
+                throw new Error(errorBody.message || `Erro na API: ${response.statusText}`);
+            }
             const data = await response.json();
             updateCreditTypeDropdown(data);
+            logChange('CRIOU TIPO DE LIMITE', 'N/A', { newType: data });
             return { success: true, data };
         } catch (error) {
-            showNotification(`Erro: ${error.message}`, 'error');
+            console.error('Falha ao salvar tipo:', error);
+            showNotification(`Erro ao salvar tipo: ${error.message}`, 'error');
             return { success: false };
         }
     }
 
     async function deleteCreditLimit(document, credit_type) {
         const limitToDelete = currentLimits.find(l => l.document === document && l.credit_type === credit_type);
-        if (!limitToDelete) return showNotification('Limite não encontrado para desativar.', 'error');
+        if (!limitToDelete) {
+            showNotification('Limite não encontrado para desativar.', 'error');
+            return;
+        }
         const updatedLimit = { ...limitToDelete, active: false };
         const result = await saveCreditLimit(updatedLimit);
         if (result.success) {
             showNotification('Limite desativado com sucesso!', 'success');
+            logChange('DESATIVOU LIMITE', document, { type: credit_type });
             loadAndRenderLimits(searchInput.value);
         }
     }
 
-    async function handleGenerateReport(e) {
-        e.preventDefault();
-        const startDate = new Date(startDateInput.value + 'T00:00:00');
-        const endDate = new Date(endDateInput.value + 'T23:59:59');
-        if (!startDateInput.value || !endDateInput.value || endDate < startDate) {
-            return showNotification('Período de datas inválido.', 'error');
-        }
-        const allLimitsResult = await fetchCreditLimits();
-        if (!allLimitsResult.success) return;
-        const filteredLimits = allLimitsResult.data.filter(limit => {
-            const updateDate = new Date(limit.last_updated || limit.date_created);
-            return updateDate >= startDate && updateDate <= endDate;
-        });
-        renderReport(filteredLimits);
+    // --- FUNÇÕES DE RENDERIZAÇÃO E UI ---
+    function formatDocument(doc) {
+        if (!doc) return '';
+        const cleanDoc = doc.replace(/\D/g, '');
+        if (cleanDoc.length === 11) return cleanDoc.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        if (cleanDoc.length === 14) return cleanDoc.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+        return doc;
+    }
+
+    function formatCurrency(value) {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
     }
     
-    async function loadAndRenderLimits(document = '') {
-        const result = await fetchCreditLimits(document);
-        if (result.success) renderTable(result.data);
+    function formatBoolean(value) {
+        const text = value ? 'Sim' : 'Não';
+        const color = value ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+        return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${color}">${text}</span>`;
+    }
+
+    function formatDateTime(isoString) {
+        if (!isoString) return 'N/A';
+        try {
+            // A API pode não retornar a data, então tratamos isso
+            const date = new Date(isoString);
+            if (isNaN(date.getTime())) return 'N/A';
+            return date.toLocaleString('pt-BR');
+        } catch (e) {
+            return 'Data inválida';
+        }
     }
 
     function renderTable(limits) {
         tableBody.innerHTML = '';
         if (!limits || limits.length === 0) {
-            return tableBody.innerHTML = '<tr><td colspan="8" class="text-center p-8 text-gray-500">Nenhum limite encontrado.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="8" class="text-center p-8 text-gray-500">Nenhum limite de crédito encontrado.</td></tr>';
+            return;
         }
-        currentLimits = limits;
-        const rows = limits.map(limit => `
-            <tr class="hover:bg-gray-50">
-                <td class="py-4 px-4" data-label="Documento">${formatDocument(limit.document)}</td>
-                <td class="py-4 px-4" data-label="Tipo">${limit.credit_type}</td>
-                <td class="py-4 px-4" data-label="Valor">${formatCurrency(limit.value)}</td>
-                <td class="py-4 px-4" data-label="Saldo">${formatCurrency(limit.balance)}</td>
-                <td class="py-4 px-4 text-center" data-label="Ativo">${formatBoolean(limit.active)}</td>
-                <td class="py-4 px-4 text-center" data-label="Sem Limite">${formatBoolean(limit.without_credit_limit)}</td>
-                <td class="py-4 px-4" data-label="Última Alteração">${formatDateTime(limit.last_updated || limit.date_created)}</td>
-                <td class="py-4 px-4 text-center" data-label="Ações">
+        
+        // A API real pode não ter last_updated, então ordenamos por outro campo ou mantemos a ordem
+        const sortedLimits = limits; // .sort((a, b) => new Date(b.last_updated) - new Date(a.last_updated));
+        currentLimits = sortedLimits;
+
+        sortedLimits.forEach(limit => {
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-gray-50';
+            row.innerHTML = `
+                <td class="py-4 px-4 whitespace-nowrap text-sm font-medium text-gray-900" data-label="Documento">${formatDocument(limit.document)}</td>
+                <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500" data-label="Tipo">${limit.credit_type}</td>
+                <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500" data-label="Valor">${formatCurrency(limit.value)}</td>
+                <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500" data-label="Saldo">${formatCurrency(limit.balance)}</td>
+                <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500 text-center" data-label="Ativo">${formatBoolean(limit.active)}</td>
+                <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500 text-center" data-label="Sem Limite">${formatBoolean(limit.without_credit_limit)}</td>
+                <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500" data-label="Última Alteração">${formatDateTime(limit.last_updated || limit.date_created)}</td>
+                <td class="py-4 px-4 whitespace-nowrap text-sm font-medium text-center" data-label="Ações">
                     <button class="edit-btn text-indigo-600 hover:text-indigo-900" data-document="${limit.document}" data-type="${limit.credit_type}">Editar</button>
                     <button class="delete-btn text-red-600 hover:text-red-900 ml-4" data-document="${limit.document}" data-type="${limit.credit_type}">Excluir</button>
-                </td>
-            </tr>`).join('');
-        tableBody.innerHTML = rows;
+                </td>`;
+            tableBody.appendChild(row);
+        });
     }
 
-    function renderReport(data) {
-        reportResultDiv.classList.toggle('hidden', data.length === 0);
-        if (data.length === 0) return reportResultDiv.innerHTML = '<p class="text-center text-gray-500">Nenhum registro encontrado.</p>';
-        const tableRows = data.map(limit => `
-            <tr class="border-b">
-                <td class="p-2">${formatDocument(limit.document)}</td><td class="p-2">${limit.credit_type}</td>
-                <td class="p-2">${formatCurrency(limit.value)}</td><td class="p-2">${formatCurrency(limit.balance)}</td>
-                <td class="p-2 text-center">${formatBoolean(limit.active)}</td><td class="p-2">${formatDateTime(limit.last_updated || limit.date_created)}</td>
-            </tr>`).join('');
-        reportResultDiv.innerHTML = `<h3 class="text-lg font-bold mb-2">Relatório</h3><div class="max-h-64 overflow-y-auto"><table class="min-w-full text-sm"><thead class="bg-gray-100"><tr><th class="p-2 text-left">Documento</th><th class="p-2 text-left">Tipo</th><th class="p-2 text-left">Valor</th><th class="p-2 text-left">Saldo</th><th class="p-2 text-center">Ativo</th><th class="p-2 text-left">Data</th></tr></thead><tbody>${tableRows}</tbody></table></div><button id="downloadCsvButton" class="mt-4 bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600">Baixar CSV</button>`;
-        document.getElementById('downloadCsvButton').addEventListener('click', () => downloadReportAsCSV(data));
+    async function loadAndRenderLimits(document = '') {
+        const result = await fetchCreditLimits(document);
+        if (result.success) renderTable(result.data);
     }
-    
-    function downloadReportAsCSV(data) {
-        const headers = ['Documento', 'Tipo', 'Valor', 'Saldo', 'Ativo', 'Sem Limite Alem Saldo', 'Ultima Alteracao'];
-        const csvRows = [headers.join(',')];
-        data.forEach(limit => csvRows.push([`'${limit.document}'`, limit.credit_type, limit.value, limit.balance, limit.active, limit.without_credit_limit, formatDateTime(limit.last_updated || limit.date_created)].join(',')));
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' }));
-        link.setAttribute('download', 'relatorio_limites.csv');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-    
+
     function openModal(data = null) {
         creditLimitForm.reset();
         isEditingInput.value = '';
-        tipoSelect.value = "";
-        const isEditing = data !== null;
-        modalTitle.textContent = isEditing ? 'Editar Limite de Crédito' : 'Adicionar Novo Limite';
-        documentoInput.readOnly = isEditing;
-        documentoInput.classList.toggle('bg-gray-200', isEditing);
-        tipoSelect.disabled = isEditing;
-        tipoSelect.classList.toggle('bg-gray-200', isEditing);
-        if (isEditing) {
+        tipoSelect.value = ""; 
+        
+        if (data) { 
+            modalTitle.textContent = 'Editar Limite de Crédito';
             documentoInput.value = data.document;
+            documentoInput.readOnly = true;
+            documentoInput.classList.add('bg-gray-200', 'text-gray-500');
             tipoSelect.value = data.credit_type;
+            tipoSelect.disabled = true;
+            tipoSelect.classList.add('bg-gray-200', 'text-gray-500'); 
             valorInput.value = (data.value || 0).toFixed(2).replace('.', ',');
-            saldoInput.value = (data.balance || 0).toFixed(2).replace('.', ',');
+            saldoInput.value = (parseFloat(data.balance) || 0).toFixed(2).replace('.', ',');
             document.getElementById('ativo').checked = data.active;
             document.getElementById('semLimite').checked = data.without_credit_limit;
             isEditingInput.value = JSON.stringify({ document: data.document, type: data.credit_type });
+        } else { 
+            modalTitle.textContent = 'Adicionar Novo Limite';
+            documentoInput.readOnly = false;
+            documentoInput.classList.remove('bg-gray-200', 'text-gray-500');
+            tipoSelect.disabled = false;
+            tipoSelect.classList.remove('bg-gray-200', 'text-gray-500'); 
         }
+        updateSaveButtonState();
         formModal.classList.remove('hidden');
     }
+
     function closeModal() { formModal.classList.add('hidden'); }
-    function openTypeModal() { creditTypeForm.reset(); typeFormModal.classList.remove('hidden'); }
+    
+    function openTypeModal() {
+        creditTypeForm.reset();
+        typeFormModal.classList.remove('hidden');
+        updateSaveTypeButtonState();
+    }
+
     function closeTypeModal() { typeFormModal.classList.add('hidden'); }
     function openDeleteModal(doc, type) {
         deletePayload = { doc, type };
@@ -304,35 +618,37 @@ document.addEventListener('DOMContentLoaded', () => {
         deleteConfirmationModal.classList.remove('hidden');
     }
     function closeDeleteModal() { deleteConfirmationModal.classList.add('hidden'); }
-    function openReportModal() { reportForm.reset(); reportResultDiv.classList.add('hidden'); reportModal.classList.remove('hidden'); }
-    function closeReportModal() { reportModal.classList.add('hidden'); }
+
+    function openReportModal() {
+        reportForm.reset();
+        reportResultDiv.classList.add('hidden');
+        reportResultDiv.innerHTML = '';
+        reportModal.classList.remove('hidden');
+    }
+
+    function closeReportModal() {
+        reportModal.classList.add('hidden');
+    }
+
+    function showWarningModal(message) {
+        warningMessage.textContent = message;
+        warningModal.classList.remove('hidden');
+    }
+    function closeWarningModal() {
+        warningModal.classList.add('hidden');
+    }
+
     function updateCreditTypeDropdown(newType) {
-        tipoSelect.appendChild(new Option(newType.name, newType.code));
+        const newOption = document.createElement('option');
+        newOption.value = newType.code;
+        newOption.textContent = newType.name;
+        tipoSelect.appendChild(newOption);
     }
-    function formatCurrencyInput(e) {
-        let value = e.target.value.replace(/\D/g, '');
-        e.target.value = value ? (parseInt(value, 10) / 100).toFixed(2).replace('.', ',') : '';
-    }
-    function formatDocument(doc) {
-        if (!doc) return '';
-        const cleanDoc = doc.replace(/\D/g, '');
-        if (cleanDoc.length === 11) return cleanDoc.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-        if (cleanDoc.length === 14) return cleanDoc.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
-        return doc;
-    }
-    function formatBoolean(value) {
-        const text = value ? 'Sim' : 'Não';
-        const color = value ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
-        return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${color}">${text}</span>`;
-    }
-    function formatDateTime(isoString) {
-        if (!isoString) return 'N/A';
-        const date = new Date(isoString);
-        return isNaN(date.getTime()) ? 'N/A' : date.toLocaleString('pt-BR');
-    }
+
     function showNotification(message, type = 'success') {
         notificationMessage.textContent = message;
-        notification.className = `fixed bottom-5 right-5 text-white py-3 px-6 rounded-lg shadow-lg transition-opacity duration-300 opacity-0 ${type === 'error' ? 'bg-red-500' : 'bg-green-500'}`;
+        notification.className = 'fixed bottom-5 right-5 text-white py-3 px-6 rounded-lg shadow-lg transition-opacity duration-300 opacity-0';
+        notification.classList.add(type === 'error' ? 'bg-red-500' : 'bg-green-500');
         notification.classList.remove('hidden');
         setTimeout(() => notification.classList.remove('opacity-0'), 10);
         setTimeout(() => {
@@ -340,52 +656,256 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => notification.classList.add('hidden'), 300);
         }, 4000);
     }
+
+    function renderReport(data) {
+        reportResultDiv.innerHTML = '';
+        reportResultDiv.classList.remove('hidden');
+
+        if (data.length === 0) {
+            reportResultDiv.innerHTML = '<p class="text-center text-gray-500">Nenhum registro encontrado para o período selecionado.</p>';
+            return;
+        }
+        
+        const sortedData = data.sort((a, b) => new Date(b.last_updated || b.date_created) - new Date(a.last_updated || a.date_created));
+
+        let tableHTML = `
+            <h3 class="text-lg font-bold mb-2">Relatório de Alterações</h3>
+            <div class="max-h-64 overflow-y-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="p-2 text-left">Documento</th>
+                            <th class="p-2 text-left">Tipo</th>
+                            <th class="p-2 text-left">Valor (R$)</th>
+                            <th class="p-2 text-left">Saldo (R$)</th>
+                            <th class="p-2 text-center">Ativo</th>
+                            <th class="p-2 text-center">Sem Limite</th>
+                            <th class="p-2 text-left">Data Alteração</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        sortedData.forEach(limit => {
+            tableHTML += `
+                <tr class="border-b">
+                    <td class="p-2">${formatDocument(limit.document)}</td>
+                    <td class="p-2">${limit.credit_type}</td>
+                    <td class="p-2">${formatCurrency(limit.value)}</td>
+                    <td class="p-2">${formatCurrency(limit.balance)}</td>
+                    <td class="p-2 text-center">${formatBoolean(limit.active)}</td>
+                    <td class="p-2 text-center">${formatBoolean(limit.without_credit_limit)}</td>
+                    <td class="p-2">${formatDateTime(limit.last_updated || limit.date_created)}</td>
+                </tr>
+            `;
+        });
+
+        tableHTML += `
+                    </tbody>
+                </table>
+            </div>
+            <button id="downloadCsvButton" class="mt-4 bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600 transition text-sm">Baixar CSV</button>
+        `;
+
+        reportResultDiv.innerHTML = tableHTML;
+        
+        document.getElementById('downloadCsvButton').addEventListener('click', () => downloadReportAsCSV(sortedData));
+    }
+
+    function downloadReportAsCSV(data) {
+        const headers = ['Documento', 'Tipo', 'Valor', 'Saldo', 'Ativo', 'Sem Limite Alem Saldo', 'Ultima Alteracao'];
+        const csvRows = [headers.join(',')];
+
+        data.forEach(limit => {
+            const row = [
+                `'${limit.document}'`,
+                limit.credit_type,
+                limit.value,
+                limit.balance,
+                limit.active,
+                limit.without_credit_limit,
+                formatDateTime(limit.last_updated || limit.date_created)
+            ];
+            csvRows.push(row.join(','));
+        });
+
+        const csvString = csvRows.join('\n');
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'relatorio_limites.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // --- FUNÇÕES DE VALIDAÇÃO E FORMATAÇÃO ---
+    function validateDocumentInput(inputElement) {
+        const value = inputElement.value.replace(/\D/g, '');
+        if (value.length > 0 && value.length !== 11 && value.length !== 14) {
+            inputElement.classList.add('border-red-500');
+            return false;
+        } else {
+            inputElement.classList.remove('border-red-500');
+            return true;
+        }
+    }
+
+    function validateTypeCodeInput() {
+        const hasSpace = /\s/.test(typeCodeInput.value);
+        if (hasSpace) {
+            typeCodeInput.classList.add('border-red-500');
+            return false;
+        } else {
+            typeCodeInput.classList.remove('border-red-500');
+            return true;
+        }
+    }
     
-    // --- 3. EVENT LISTENERS ---
+    function formatCurrencyInput(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value === '') {
+            e.target.value = '';
+            return;
+        }
+        value = (parseInt(value, 10) / 100).toFixed(2);
+        if (isNaN(value)) value = '0.00';
+        e.target.value = value.replace('.', ',');
+    }
+
+    function updateSaveButtonState() {
+        const isDocumentValid = validateDocumentInput(documentoInput) && documentoInput.value.length > 0;
+        const isTypeSelected = tipoSelect.value !== "";
+        const isValorValid = valorInput.value.trim() !== '' && valorInput.value.trim() !== '0,00';
+
+        if (isDocumentValid && isTypeSelected && isValorValid) {
+            saveLimitButton.disabled = false;
+            saveLimitButton.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            saveLimitButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+        } else {
+            saveLimitButton.disabled = true;
+            saveLimitButton.classList.add('bg-gray-400', 'cursor-not-allowed');
+            saveLimitButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+        }
+    }
+
+    function updateSaveTypeButtonState() {
+        const isNameValid = typeNameInput.value.trim() !== '';
+        const isCodeValid = typeCodeInput.value.trim() !== '' && !/\s/.test(typeCodeInput.value);
+
+        if (isNameValid && isCodeValid) {
+            saveTypeButton.disabled = false;
+            saveTypeButton.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            saveTypeButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+        } else {
+            saveTypeButton.disabled = true;
+            saveTypeButton.classList.add('bg-gray-400', 'cursor-not-allowed');
+            saveTypeButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+        }
+    }
+
+    // --- MANIPULADORES DE EVENTOS ---
     loginForm.addEventListener('submit', handleLogin);
     logoutButton.addEventListener('click', handleLogout);
-    searchButton.addEventListener('click', () => loadAndRenderLimits(searchInput.value));
-    searchInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') loadAndRenderLimits(searchInput.value); });
+
+    searchButton.addEventListener('click', () => { if (validateDocumentInput(searchInput)) loadAndRenderLimits(searchInput.value); });
+    searchInput.addEventListener('keyup', (e) => {
+        validateDocumentInput(searchInput);
+        if (e.key === 'Enter' && searchInput.value.trim() !== '' && validateDocumentInput(searchInput)) {
+            loadAndRenderLimits(searchInput.value);
+        } else if (e.key === 'Enter' && searchInput.value.trim() === '') {
+            loadAndRenderLimits();
+        }
+    });
+
+
     addLimitButton.addEventListener('click', () => openModal());
     addTypeButton.addEventListener('click', openTypeModal);
     extractReportButton.addEventListener('click', openReportModal);
+
     closeModalButton.addEventListener('click', closeModal);
     cancelButton.addEventListener('click', closeModal);
     closeTypeModalButton.addEventListener('click', closeTypeModal);
     cancelTypeButton.addEventListener('click', closeTypeModal);
-    closeDeleteModalButton.addEventListener('click', closeDeleteModal);
-    cancelDeleteButton.addEventListener('click', closeDeleteModal);
     closeReportModalButton.addEventListener('click', closeReportModal);
     cancelReportButton.addEventListener('click', closeReportModal);
-    closeWarningModalButton.addEventListener('click', () => warningModal.classList.add('hidden'));
+    cancelDeleteButton.addEventListener('click', closeDeleteModal);
+    closeWarningModalButton.addEventListener('click', closeWarningModal);
+
+    reportForm.addEventListener('submit', handleGenerateReport);
+
     tableBody.addEventListener('click', (e) => {
-        const target = e.target.closest('button');
-        if (!target) return;
-        const { document, type } = target.dataset;
+        const target = e.target;
+        const doc = target.dataset.document;
+        const type = target.dataset.type;
         if (target.classList.contains('edit-btn')) {
-            const limitToEdit = currentLimits.find(l => l.document === document && l.credit_type === type);
+            const limitToEdit = currentLimits.find(l => l.document === doc && l.credit_type === type);
             if (limitToEdit) openModal(limitToEdit);
-        } else if (target.classList.contains('delete-btn')) {
-            openDeleteModal(document, type);
+        }
+        if (target.classList.contains('delete-btn')) {
+            openDeleteModal(doc, type);
         }
     });
+
     confirmDeleteButton.addEventListener('click', () => {
         if (deletePayload) {
             deleteCreditLimit(deletePayload.doc, deletePayload.type);
             closeDeleteModal();
         }
     });
+    
+    valorInput.addEventListener('input', formatCurrencyInput);
+    valorInput.addEventListener('keyup', updateSaveButtonState);
+    saldoInput.addEventListener('input', formatCurrencyInput);
+    documentoInput.addEventListener('keyup', updateSaveButtonState);
+    tipoSelect.addEventListener('change', updateSaveButtonState);
+    
+    typeNameInput.addEventListener('keyup', updateSaveTypeButtonState);
+    typeCodeInput.addEventListener('keyup', () => {
+        validateTypeCodeInput();
+        updateSaveTypeButtonState();
+    });
+
     creditLimitForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        const isEditing = !!isEditingInput.value;
         const formData = new FormData(creditLimitForm);
+        const value = parseFloat(formData.get('value').replace(',', '.')) || 0;
+        const balance = parseFloat(formData.get('balance').replace(',', '.')) || 0;
+
+        if (value < 0 || balance < 0) {
+            showNotification('Valores de limite e saldo não podem ser negativos.', 'error');
+            return;
+        }
+        
+        const documentValue = formData.get('document').replace(/\D/g, '');
+        let creditType;
+        
+        if (isEditing) {
+            const originalData = JSON.parse(isEditingInput.value);
+            creditType = originalData.type;
+        } else {
+            creditType = formData.get('credit_type');
+            
+            // A validação de duplicidade deve ser feita no backend, mas mantemos uma verificação simples
+            const alreadyExists = currentLimits.some(limit => limit.document === documentValue && limit.credit_type === creditType);
+            if (alreadyExists) {
+                showWarningModal('Já existe um limite cadastrado para este documento com o tipo selecionado.');
+                return;
+            }
+        }
+
         const limitData = {
-            document: formData.get('document').replace(/\D/g, ''),
-            credit_type: isEditingInput.value ? JSON.parse(isEditingInput.value).type : formData.get('credit_type'),
-            value: parseFloat(String(formData.get('value')).replace(',', '.')) || 0,
-            balance: parseFloat(String(formData.get('balance')).replace(',', '.')) || 0,
+            document: documentValue,
+            credit_type: creditType,
+            value: value,
+            balance: balance,
             active: formData.get('active') === 'on',
             without_credit_limit: formData.get('without_credit_limit') === 'on'
         };
+
         const result = await saveCreditLimit(limitData);
         if (result.success) {
             closeModal();
@@ -393,21 +913,67 @@ document.addEventListener('DOMContentLoaded', () => {
             loadAndRenderLimits(searchInput.value);
         }
     });
+
     creditTypeForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const typeData = { name: typeNameInput.value, code: typeCodeInput.value };
-        if (/\s/.test(typeData.code)) return showNotification('O código não pode conter espaços.', 'error');
+        if (!validateTypeCodeInput()) {
+            showNotification('Código do tipo não pode conter espaços.', 'error');
+            return;
+        }
+        const formData = new FormData(creditTypeForm);
+        const typeData = { name: formData.get('name'), code: formData.get('code') };
+        
+        const existingType = Array.from(tipoSelect.options).some(option => option.value.toUpperCase() === typeData.code.toUpperCase());
+        if (existingType) {
+            showWarningModal('O código de tipo informado já existe. Por favor, utilize outro código.');
+            return;
+        }
+
         const result = await saveCreditLimitType(typeData);
         if (result.success) {
             closeTypeModal();
             showNotification(`Tipo "${result.data.name}" salvo com sucesso!`, 'success');
         }
     });
-    reportForm.addEventListener('submit', handleGenerateReport);
-    valorInput.addEventListener('input', formatCurrencyInput);
-    saldoInput.addEventListener('input', formatCurrencyInput);
 
-    // --- 4. INICIALIZAÇÃO DA APLICAÇÃO ---
-    initialize();
+    async function handleGenerateReport(e) {
+        e.preventDefault();
+        const startDate = new Date(startDateInput.value + 'T00:00:00');
+        const endDate = new Date(endDateInput.value + 'T23:59:59');
+
+        if (!startDateInput.value || !endDateInput.value) {
+            showNotification('Por favor, selecione a data de início e de fim.', 'error');
+            return;
+        }
+
+        if (endDate < startDate) {
+            showNotification('A data final não pode ser anterior à data inicial.', 'error');
+            return;
+        }
+
+        const allLimitsResult = await fetchCreditLimits();
+        if (!allLimitsResult.success) {
+            showNotification('Não foi possível buscar os dados para o relatório.', 'error');
+            return;
+        }
+        
+        const allLimits = allLimitsResult.data;
+
+        const filteredLimits = allLimits.filter(limit => {
+            const updateDate = limit.last_updated || limit.date_created;
+            if (!updateDate) return false;
+            const lastUpdated = new Date(updateDate);
+            return lastUpdated >= startDate && lastUpdated <= endDate;
+        });
+
+        renderReport(filteredLimits);
+    }
+
+
+    // --- INICIALIZAÇÃO ---
+    // A inicialização dos dados (loadAndRenderLimits) agora ocorre após o login bem-sucedido.
 });
 </script>
+
+</body>
+</html>

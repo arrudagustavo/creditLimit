@@ -18,6 +18,10 @@
         select:disabled {
             color: #6b7280; /* Cor de texto cinza-500 do Tailwind */
         }
+        /* Garante que a modal de confirmação fique sobre as outras */
+        .z-60 {
+            z-index: 60;
+        }
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -191,6 +195,17 @@
         </div>
     </div>
 
+    <div id="reportConfirmationModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-60 hidden">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md mx-4">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Confirmar Extração</h2>
+            <p class="text-gray-600 mb-6">Nenhum registro foi encontrado no período selecionado. Deseja extrair um relatório com todos os limites disponíveis?</p>
+            <div class="flex justify-end gap-4">
+                <button id="cancelReportConfirmButton" class="bg-gray-200 text-gray-800 font-bold py-2 px-6 rounded-lg hover:bg-gray-300 transition">Cancelar</button>
+                <button id="confirmReportButton" class="bg-green-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-700 transition">Sim, Extrair Todos</button>
+            </div>
+        </div>
+    </div>
+
     <div id="reportModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden">
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg mx-4">
             <div class="flex justify-between items-center mb-6">
@@ -243,6 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentLimits = [];
     let deletePayload = null;
+    let allLimitsForReport = [];
 
     // --- ELEMENTOS DO DOM (TELA PRINCIPAL) ---
     const appScreen = document.getElementById('app');
@@ -290,6 +306,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const typeToDeleteSpan = document.getElementById('typeToDelete');
     const cancelDeleteButton = document.getElementById('cancelDeleteButton');
     const confirmDeleteButton = document.getElementById('confirmDeleteButton');
+
+    const reportConfirmationModal = document.getElementById('reportConfirmationModal');
+    const cancelReportConfirmButton = document.getElementById('cancelReportConfirmButton');
+    const confirmReportButton = document.getElementById('confirmReportButton');
 
     const reportModal = document.getElementById('reportModal');
     const closeReportModalButton = document.getElementById('closeReportModalButton');
@@ -351,6 +371,10 @@ document.addEventListener('DOMContentLoaded', () => {
             BEARER_TOKEN = data.access_token;
             LOGGED_IN_USER_EMAIL = email;
             
+            // Armazena a sessão no localStorage
+            localStorage.setItem('bearerToken', BEARER_TOKEN);
+            localStorage.setItem('loggedInUserEmail', LOGGED_IN_USER_EMAIL);
+
             userEmailDisplay.textContent = email;
             loginScreen.classList.add('hidden');
             appScreen.classList.remove('hidden');
@@ -369,6 +393,10 @@ document.addEventListener('DOMContentLoaded', () => {
         LOGGED_IN_USER_EMAIL = '';
         emailInput.value = '';
         passwordInput.value = '';
+
+        // Limpa a sessão do localStorage
+        localStorage.removeItem('bearerToken');
+        localStorage.removeItem('loggedInUserEmail');
         
         appScreen.classList.add('hidden');
         loginScreen.classList.remove('hidden');
@@ -615,6 +643,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function closeDeleteModal() { deleteConfirmationModal.classList.add('hidden'); }
 
+    function openReportConfirmationModal() {
+        reportConfirmationModal.classList.remove('hidden');
+    }
+    function closeReportConfirmationModal() {
+        reportConfirmationModal.classList.add('hidden');
+    }
+
     function openReportModal() {
         reportForm.reset();
         reportResultDiv.classList.add('hidden');
@@ -830,6 +865,14 @@ document.addEventListener('DOMContentLoaded', () => {
     cancelDeleteButton.addEventListener('click', closeDeleteModal);
     closeWarningModalButton.addEventListener('click', closeWarningModal);
 
+    cancelReportConfirmButton.addEventListener('click', closeReportConfirmationModal);
+    confirmReportButton.addEventListener('click', () => {
+        if (allLimitsForReport.length > 0) {
+            renderReport(allLimitsForReport);
+        }
+        closeReportConfirmationModal();
+    });
+
     reportForm.addEventListener('submit', handleGenerateReport);
 
     tableBody.addEventListener('click', (e) => {
@@ -960,21 +1003,41 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        const allLimits = allLimitsResult.data;
+        allLimitsForReport = allLimitsResult.data;
 
-        const filteredLimits = allLimits.filter(limit => {
+        const filteredLimits = allLimitsForReport.filter(limit => {
             const updateDate = limit.last_updated || limit.date_created;
             if (!updateDate) return false;
             const lastUpdated = new Date(updateDate);
             return lastUpdated >= startDate && lastUpdated <= endDate;
         });
 
-        renderReport(filteredLimits);
+        if (filteredLimits.length > 0) {
+            renderReport(filteredLimits);
+        } else {
+            openReportConfirmationModal();
+        }
     }
 
 
     // --- INICIALIZAÇÃO ---
-    // A inicialização dos dados (loadAndRenderLimits) agora ocorre após o login bem-sucedido.
+    function initializeApp() {
+        const storedToken = localStorage.getItem('bearerToken');
+        const storedEmail = localStorage.getItem('loggedInUserEmail');
+
+        if (storedToken && storedEmail) {
+            BEARER_TOKEN = storedToken;
+            LOGGED_IN_USER_EMAIL = storedEmail;
+
+            userEmailDisplay.textContent = storedEmail;
+            loginScreen.classList.add('hidden');
+            appScreen.classList.remove('hidden');
+            
+            loadAndRenderLimits();
+        }
+    }
+    
+    initializeApp();
 });
 </script>
 

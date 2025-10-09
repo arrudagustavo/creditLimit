@@ -258,10 +258,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         try {
-            const response = await fetch(`${API_BASE_URL}/creditLimit/save`, { method: 'POST', headers: { 'Authorization': `Bearer ${BEARER_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify(limitData) });
+            const response = await fetch(`${API_BASE_URL}/creditLimit/save`, { 
+                method: 'POST', 
+                headers: { 
+                    'Authorization': `Bearer ${BEARER_TOKEN}`, 
+                    'Content-Type': 'application/json' 
+                }, 
+                body: JSON.stringify(limitData) 
+            });
             if (!response.ok) {
-                 const errorBody = await response.json();
-                 throw new Error(errorBody.message || `Erro na API: ${response.statusText}`);
+                const errorBody = await response.json();
+                throw new Error(errorBody.message || `Erro na API: ${response.statusText}`);
             }
             const data = await response.json();
             logChange(isEditing ? 'ATUALIZOU LIMITE' : 'CRIOU LIMITE', data.document, { newValues: data });
@@ -282,7 +289,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         try {
-            const response = await fetch(`${API_BASE_URL}/creditLimit/saveTypeCreditLimit`, { method: 'POST', headers: { 'Authorization': `Bearer ${BEARER_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify(typeData) });
+            const response = await fetch(`${API_BASE_URL}/creditLimit/saveTypeCreditLimit`, { 
+                method: 'POST', 
+                headers: { 
+                    'Authorization': `Bearer ${BEARER_TOKEN}`, 
+                    'Content-Type': 'application/json' 
+                }, 
+                body: JSON.stringify(typeData) 
+            });
             if (!response.ok) {
                 const errorBody = await response.json();
                 throw new Error(errorBody.message || `Erro na API: ${response.statusText}`);
@@ -357,4 +371,420 @@ document.addEventListener('DOMContentLoaded', () => {
             const row = document.createElement('tr');
             row.className = 'hover:bg-gray-50';
             row.innerHTML = `
-                <td class="py-4 px-4 whitespace
+                <td class="py-4 px-4 whitespace-nowrap text-sm font-medium text-gray-900" data-label="Documento">${formatDocument(limit.document)}</td>
+                <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500" data-label="Tipo">${limit.credit_type}</td>
+                <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500" data-label="Valor">${formatCurrency(limit.value)}</td>
+                <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500" data-label="Saldo">${formatCurrency(limit.balance)}</td>
+                <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500 text-center" data-label="Ativo">${formatBoolean(limit.active)}</td>
+                <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500 text-center" data-label="Sem Limite">${formatBoolean(limit.without_credit_limit)}</td>
+                <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500" data-label="Última Alteração">${formatDateTime(limit.last_updated || limit.date_created)}</td>
+                <td class="py-4 px-4 whitespace-nowrap text-sm font-medium text-center" data-label="Ações">
+                    <button class="edit-btn text-indigo-600 hover:text-indigo-900" data-document="${limit.document}" data-type="${limit.credit_type}">Editar</button>
+                    <button class="delete-btn text-red-600 hover:text-red-900 ml-4" data-document="${limit.document}" data-type="${limit.credit_type}">Excluir</button>
+                </td>`;
+            tableBody.appendChild(row);
+        });
+    }
+
+    async function loadAndRenderLimits(document = '') {
+        const result = await fetchCreditLimits(document);
+        if (result.success) renderTable(result.data);
+    }
+
+    function openModal(data = null) {
+        creditLimitForm.reset();
+        isEditingInput.value = '';
+        tipoSelect.value = ""; 
+        
+        if (data) { 
+            modalTitle.textContent = 'Editar Limite de Crédito';
+            documentoInput.value = data.document;
+            documentoInput.readOnly = true;
+            documentoInput.classList.add('bg-gray-200', 'text-gray-500');
+            tipoSelect.value = data.credit_type;
+            tipoSelect.disabled = true;
+            tipoSelect.classList.add('bg-gray-200', 'text-gray-500'); 
+            valorInput.value = (data.value || 0).toFixed(2).replace('.', ',');
+            saldoInput.value = (parseFloat(data.balance) || 0).toFixed(2).replace('.', ',');
+            document.getElementById('ativo').checked = data.active;
+            document.getElementById('semLimite').checked = data.without_credit_limit;
+            isEditingInput.value = JSON.stringify({ document: data.document, type: data.credit_type });
+        } else { 
+            modalTitle.textContent = 'Adicionar Novo Limite';
+            documentoInput.readOnly = false;
+            documentoInput.classList.remove('bg-gray-200', 'text-gray-500');
+            tipoSelect.disabled = false;
+            tipoSelect.classList.remove('bg-gray-200', 'text-gray-500'); 
+        }
+        updateSaveButtonState();
+        formModal.classList.remove('hidden');
+    }
+
+    function closeModal() { formModal.classList.add('hidden'); }
+    
+    function openTypeModal() {
+        creditTypeForm.reset();
+        typeFormModal.classList.remove('hidden');
+        updateSaveTypeButtonState();
+    }
+
+    function closeTypeModal() { typeFormModal.classList.add('hidden'); }
+    function openDeleteModal(doc, type) {
+        deletePayload = { doc, type };
+        documentToDeleteSpan.textContent = formatDocument(doc);
+        typeToDeleteSpan.textContent = type;
+        deleteConfirmationModal.classList.remove('hidden');
+    }
+    function closeDeleteModal() { deleteConfirmationModal.classList.add('hidden'); }
+
+    function openReportModal() {
+        reportForm.reset();
+        reportResultDiv.classList.add('hidden');
+        reportResultDiv.innerHTML = '';
+        reportModal.classList.remove('hidden');
+    }
+
+    function closeReportModal() {
+        reportModal.classList.add('hidden');
+    }
+
+    function showWarningModal(message) {
+        warningMessage.textContent = message;
+        warningModal.classList.remove('hidden');
+    }
+    function closeWarningModal() {
+        warningModal.classList.add('hidden');
+    }
+
+    function updateCreditTypeDropdown(newType) {
+        const newOption = document.createElement('option');
+        newOption.value = newType.code;
+        newOption.textContent = newType.name;
+        tipoSelect.appendChild(newOption);
+    }
+
+    function showNotification(message, type = 'success') {
+        notificationMessage.textContent = message;
+        notification.className = 'fixed bottom-5 right-5 text-white py-3 px-6 rounded-lg shadow-lg transition-opacity duration-300 opacity-0';
+        notification.classList.add(type === 'error' ? 'bg-red-500' : 'bg-green-500');
+        notification.classList.remove('hidden');
+        setTimeout(() => notification.classList.remove('opacity-0'), 10);
+        setTimeout(() => {
+            notification.classList.add('opacity-0');
+            setTimeout(() => notification.classList.add('hidden'), 300);
+        }, 4000);
+    }
+
+    function renderReport(data) {
+        reportResultDiv.innerHTML = '';
+        reportResultDiv.classList.remove('hidden');
+
+        if (data.length === 0) {
+            reportResultDiv.innerHTML = '<p class="text-center text-gray-500">Nenhum registro encontrado para o período selecionado.</p>';
+            return;
+        }
+        
+        const sortedData = data.sort((a, b) => new Date(b.last_updated || b.date_created) - new Date(a.last_updated || a.date_created));
+
+        let tableHTML = `
+            <h3 class="text-lg font-bold mb-2">Relatório de Alterações</h3>
+            <div class="max-h-64 overflow-y-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="p-2 text-left">Documento</th>
+                            <th class="p-2 text-left">Tipo</th>
+                            <th class="p-2 text-left">Valor (R$)</th>
+                            <th class="p-2 text-left">Saldo (R$)</th>
+                            <th class="p-2 text-center">Ativo</th>
+                            <th class="p-2 text-center">Sem Limite</th>
+                            <th class="p-2 text-left">Data Alteração</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        sortedData.forEach(limit => {
+            tableHTML += `
+                <tr class="border-b">
+                    <td class="p-2">${formatDocument(limit.document)}</td>
+                    <td class="p-2">${limit.credit_type}</td>
+                    <td class="p-2">${formatCurrency(limit.value)}</td>
+                    <td class="p-2">${formatCurrency(limit.balance)}</td>
+                    <td class="p-2 text-center">${formatBoolean(limit.active)}</td>
+                    <td class="p-2 text-center">${formatBoolean(limit.without_credit_limit)}</td>
+                    <td class="p-2">${formatDateTime(limit.last_updated || limit.date_created)}</td>
+                </tr>
+            `;
+        });
+
+        tableHTML += `
+                    </tbody>
+                </table>
+            </div>
+            <button id="downloadCsvButton" class="mt-4 bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600 transition text-sm">Baixar CSV</button>
+        `;
+
+        reportResultDiv.innerHTML = tableHTML;
+        
+        document.getElementById('downloadCsvButton').addEventListener('click', () => downloadReportAsCSV(sortedData));
+    }
+
+    function downloadReportAsCSV(data) {
+        const headers = ['Documento', 'Tipo', 'Valor', 'Saldo', 'Ativo', 'Sem Limite Alem Saldo', 'Ultima Alteracao'];
+        const csvRows = [headers.join(',')];
+
+        data.forEach(limit => {
+            const row = [
+                `'${limit.document}'`,
+                limit.credit_type,
+                limit.value,
+                limit.balance,
+                limit.active,
+                limit.without_credit_limit,
+                formatDateTime(limit.last_updated || limit.date_created)
+            ];
+            csvRows.push(row.join(','));
+        });
+
+        const csvString = csvRows.join('\n');
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'relatorio_limites.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // --- FUNÇÕES DE VALIDAÇÃO E FORMATAÇÃO ---
+    function validateDocumentInput(inputElement) {
+        const value = inputElement.value.replace(/\D/g, '');
+        if (value.length > 0 && value.length !== 11 && value.length !== 14) {
+            inputElement.classList.add('border-red-500');
+            return false;
+        } else {
+            inputElement.classList.remove('border-red-500');
+            return true;
+        }
+    }
+
+    function validateTypeCodeInput() {
+        const hasSpace = /\s/.test(typeCodeInput.value);
+        if (hasSpace) {
+            typeCodeInput.classList.add('border-red-500');
+            return false;
+        } else {
+            typeCodeInput.classList.remove('border-red-500');
+            return true;
+        }
+    }
+    
+    function formatCurrencyInput(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value === '') {
+            e.target.value = '';
+            return;
+        }
+        value = (parseInt(value, 10) / 100).toFixed(2);
+        if (isNaN(value)) value = '0.00';
+        e.target.value = value.replace('.', ',');
+    }
+
+    function updateSaveButtonState() {
+        const isDocumentValid = validateDocumentInput(documentoInput) && documentoInput.value.length > 0;
+        const isTypeSelected = tipoSelect.value !== "";
+        const isValorValid = valorInput.value.trim() !== '' && valorInput.value.trim() !== '0,00';
+
+        if (isDocumentValid && isTypeSelected && isValorValid) {
+            saveLimitButton.disabled = false;
+            saveLimitButton.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            saveLimitButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+        } else {
+            saveLimitButton.disabled = true;
+            saveLimitButton.classList.add('bg-gray-400', 'cursor-not-allowed');
+            saveLimitButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+        }
+    }
+
+    function updateSaveTypeButtonState() {
+        const isNameValid = typeNameInput.value.trim() !== '';
+        const isCodeValid = typeCodeInput.value.trim() !== '' && !/\s/.test(typeCodeInput.value);
+
+        if (isNameValid && isCodeValid) {
+            saveTypeButton.disabled = false;
+            saveTypeButton.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            saveTypeButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+        } else {
+            saveTypeButton.disabled = true;
+            saveTypeButton.classList.add('bg-gray-400', 'cursor-not-allowed');
+            saveTypeButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+        }
+    }
+
+    // --- MANIPULADORES DE EVENTOS ---
+    loginForm.addEventListener('submit', handleLogin);
+    logoutButton.addEventListener('click', handleLogout);
+
+    searchButton.addEventListener('click', () => { if (validateDocumentInput(searchInput)) loadAndRenderLimits(searchInput.value); });
+    searchInput.addEventListener('keyup', (e) => {
+        validateDocumentInput(searchInput);
+        if (e.key === 'Enter' && searchInput.value.trim() !== '' && validateDocumentInput(searchInput)) {
+            loadAndRenderLimits(searchInput.value);
+        } else if (e.key === 'Enter' && searchInput.value.trim() === '') {
+            loadAndRenderLimits();
+        }
+    });
+
+    addLimitButton.addEventListener('click', () => openModal());
+    addTypeButton.addEventListener('click', openTypeModal);
+    extractReportButton.addEventListener('click', openReportModal);
+
+    closeModalButton.addEventListener('click', closeModal);
+    cancelButton.addEventListener('click', closeModal);
+    closeTypeModalButton.addEventListener('click', closeTypeModal);
+    cancelTypeButton.addEventListener('click', closeTypeModal);
+    closeReportModalButton.addEventListener('click', closeReportModal);
+    cancelReportButton.addEventListener('click', closeReportModal);
+    cancelDeleteButton.addEventListener('click', closeDeleteModal);
+    closeWarningModalButton.addEventListener('click', closeWarningModal);
+
+    reportForm.addEventListener('submit', handleGenerateReport);
+
+    tableBody.addEventListener('click', (e) => {
+        const target = e.target;
+        const doc = target.dataset.document;
+        const type = target.dataset.type;
+        if (target.classList.contains('edit-btn')) {
+            const limitToEdit = currentLimits.find(l => l.document === doc && l.credit_type === type);
+            if (limitToEdit) openModal(limitToEdit);
+        }
+        if (target.classList.contains('delete-btn')) {
+            openDeleteModal(doc, type);
+        }
+    });
+
+    confirmDeleteButton.addEventListener('click', () => {
+        if (deletePayload) {
+            deleteCreditLimit(deletePayload.doc, deletePayload.type);
+            closeDeleteModal();
+        }
+    });
+    
+    valorInput.addEventListener('input', formatCurrencyInput);
+    valorInput.addEventListener('keyup', updateSaveButtonState);
+    saldoInput.addEventListener('input', formatCurrencyInput);
+    documentoInput.addEventListener('keyup', updateSaveButtonState);
+    tipoSelect.addEventListener('change', updateSaveButtonState);
+    
+    typeNameInput.addEventListener('keyup', updateSaveTypeButtonState);
+    typeCodeInput.addEventListener('keyup', () => {
+        validateTypeCodeInput();
+        updateSaveTypeButtonState();
+    });
+
+    creditLimitForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const isEditing = !!isEditingInput.value;
+        const formData = new FormData(creditLimitForm);
+        const value = parseFloat(formData.get('value').replace(',', '.')) || 0;
+        const balance = parseFloat(formData.get('balance').replace(',', '.')) || 0;
+
+        if (value < 0 || balance < 0) {
+            showNotification('Valores de limite e saldo não podem ser negativos.', 'error');
+            return;
+        }
+        
+        const documentValue = formData.get('document').replace(/\D/g, '');
+        let creditType;
+        
+        if (isEditing) {
+            const originalData = JSON.parse(isEditingInput.value);
+            creditType = originalData.type;
+        } else {
+            creditType = formData.get('credit_type');
+            
+            const alreadyExists = currentLimits.some(limit => limit.document === documentValue && limit.credit_type === creditType);
+            if (alreadyExists) {
+                showWarningModal('Já existe um limite cadastrado para este documento com o tipo selecionado.');
+                return;
+            }
+        }
+
+        const limitData = {
+            document: documentValue,
+            credit_type: creditType,
+            value: value,
+            balance: balance,
+            active: formData.get('active') === 'on',
+            without_credit_limit: formData.get('without_credit_limit') === 'on'
+        };
+
+        const result = await saveCreditLimit(limitData);
+        if (result.success) {
+            closeModal();
+            showNotification('Limite salvo com sucesso!', 'success');
+            loadAndRenderLimits(searchInput.value);
+        }
+    });
+
+    creditTypeForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!validateTypeCodeInput()) {
+            showNotification('Código do tipo não pode conter espaços.', 'error');
+            return;
+        }
+        const formData = new FormData(creditTypeForm);
+        const typeData = { name: formData.get('name'), code: formData.get('code') };
+        
+        const existingType = Array.from(tipoSelect.options).some(option => option.value.toUpperCase() === typeData.code.toUpperCase());
+        if (existingType) {
+            showWarningModal('O código de tipo informado já existe. Por favor, utilize outro código.');
+            return;
+        }
+
+        const result = await saveCreditLimitType(typeData);
+        if (result.success) {
+            closeTypeModal();
+            showNotification(`Tipo "${result.data.name}" salvo com sucesso!`, 'success');
+        }
+    });
+
+    async function handleGenerateReport(e) {
+        e.preventDefault();
+        const startDate = new Date(startDateInput.value + 'T00:00:00');
+        const endDate = new Date(endDateInput.value + 'T23:59:59');
+
+        if (!startDateInput.value || !endDateInput.value) {
+            showNotification('Por favor, selecione a data de início e de fim.', 'error');
+            return;
+        }
+
+        if (endDate < startDate) {
+            showNotification('A data final não pode ser anterior à data inicial.', 'error');
+            return;
+        }
+
+        const allLimitsResult = await fetchCreditLimits();
+        if (!allLimitsResult.success) {
+            showNotification('Não foi possível buscar os dados para o relatório.', 'error');
+            return;
+        }
+        
+        const allLimits = allLimitsResult.data;
+
+        const filteredLimits = allLimits.filter(limit => {
+            const updateDate = limit.last_updated || limit.date_created;
+            if (!updateDate) return false;
+            const lastUpdated = new Date(updateDate);
+            return lastUpdated >= startDate && lastUpdated <= endDate;
+        });
+
+        renderReport(filteredLimits);
+    }
+
+    // --- INICIALIZAÇÃO ---
+    initializeApp(); // Verifica o estado de login na inicialização
+});

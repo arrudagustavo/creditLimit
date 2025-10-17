@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciamento de Limite de Crédito</title>
+    <!-- Carregamento do Tailwind CSS para estilização -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Estilos para responsividade da tabela em telas pequenas */
@@ -26,6 +27,7 @@
 </head>
 <body class="bg-gray-100 font-sans">
 
+    <!-- Tela de Login -->
     <div id="loginScreen" class="container mx-auto flex items-center justify-center min-h-screen p-4">
         <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
             <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Login</h1>
@@ -40,6 +42,7 @@
                 </div>
                 <button type="submit" id="loginButton" class="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-300 shadow-sm flex items-center justify-center">
                     <span id="loginButtonText">Entrar</span>
+                    <!-- Spinner de carregamento -->
                     <svg id="loginSpinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -49,12 +52,13 @@
         </div>
     </div>
 
+    <!-- Aplicação Principal (escondida até o login) -->
     <div id="app" class="container mx-auto p-4 md:p-8 hidden">
         
         <header class="mb-8 flex justify-between items-center">
             <div>
-                <h1 class="text-3xl font-bold text-gray-800">Limite de Crédito</h1>
-                <p class="text-gray-500">Gerencie os limites de crédito dos clientes.</p>
+                <h1 class="text-3xl font-bold text-gray-800">Gerenciamento de Limite</h1>
+                <p class="text-gray-500">Busque um cliente para visualizar ou cadastrar limites.</p>
             </div>
             <div id="userInfo" class="text-right">
                 <p class="text-sm text-gray-700">Bem-vindo(a), <strong id="userEmailDisplay"></strong></p>
@@ -63,6 +67,7 @@
         </header>
 
         <main class="bg-white p-6 rounded-lg shadow-md">
+            <!-- Barra de busca e botões de ação -->
             <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                 <div class="relative w-full md:w-1/3">
                     <input type="text" id="searchInput" placeholder="Buscar por Documento (CNPJ/CPF)" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
@@ -71,23 +76,46 @@
                     </button>
                 </div>
                 <div class="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                    <!-- Botão de Relatório sempre ativo -->
                     <button id="extractReportButton" class="w-full md:w-auto bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition duration-300 shadow-sm">
                         Extrair Relatório
                     </button>
-                    <button id="addTypeButton" class="w-full md:w-auto bg-gray-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-700 transition duration-300 shadow-sm">
+                    <!-- Botões desabilitados por padrão, ativados após encontrar o cliente -->
+                    <button id="addTypeButton" class="w-full md:w-auto bg-gray-400 text-white font-bold py-3 px-6 rounded-lg transition duration-300 shadow-sm cursor-not-allowed" disabled>
                         + Novo Tipo
                     </button>
-                    <button id="addLimitButton" class="w-full md:w-auto bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-300 shadow-sm">
+                    <button id="addLimitButton" class="w-full md:w-auto bg-gray-400 text-white font-bold py-3 px-6 rounded-lg transition duration-300 shadow-sm cursor-not-allowed" disabled>
                         + Novo Limite
                     </button>
                 </div>
             </div>
 
-            <div class="overflow-x-auto">
+            <!-- Seção de Informações do Cliente (Aparece após busca bem-sucedida) -->
+            <div id="customerInfoSection" class="bg-blue-50 p-4 border border-blue-200 rounded-lg mb-6 hidden">
+                <h2 class="text-xl font-bold text-blue-800 mb-4">Informações do Cliente</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
+                    <div><span class="font-semibold">Nome:</span> <span id="customerName"></span></div>
+                    <div><span class="font-semibold">Documento:</span> <span id="customerDocument"></span></div>
+                    <div><span class="font-semibold">Email:</span> <span id="customerEmail"></span></div>
+                    <div><span class="font-semibold">Telefone:</span> <span id="customerPhone"></span></div>
+                    <div><span class="font-semibold">Contato:</span> <span id="customerContactName"></span></div>
+                    <div class="md:col-span-2"><span class="font-semibold">Endereço:</span> <span id="customerAddress"></span></div>
+                </div>
+            </div>
+
+            <!-- Mensagem de estado inicial ou não encontrado -->
+            <div id="initialStateMessage" class="text-center p-8 text-gray-500">
+                Utilize a busca acima para encontrar um cliente pelo CPF/CNPJ.
+            </div>
+
+            <!-- Tabela de Limites de Crédito (Título dinâmico) -->
+            <h2 id="limitsTableTitle" class="text-xl font-bold text-gray-800 mb-4 mt-6 hidden">Limites de Crédito Cadastrados</h2>
+            
+            <div class="overflow-x-auto" id="limitsTableContainer" >
                 <table class="min-w-full bg-white responsive-table">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documento</th>
+                            <!-- COLUNA DOCUMENTO REMOVIDA AQUI -->
                             <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
                             <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor (R$)</th>
                             <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Saldo (R$)</th>
@@ -98,13 +126,14 @@
                         </tr>
                     </thead>
                     <tbody id="creditLimitTableBody" class="divide-y divide-gray-200">
-                         <tr><td colspan="8" class="text-center p-8 text-gray-500">Nenhum limite de crédito encontrado. Realize uma busca ou adicione um novo limite.</td></tr>
+                         <tr><td colspan="7" class="text-center p-8 text-gray-500">Nenhum limite de crédito encontrado.</td></tr>
                     </tbody>
                 </table>
             </div>
         </main>
     </div>
 
+    <!-- Modal de Adicionar/Editar Limite -->
     <div id="formModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden">
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg mx-4">
             <div class="flex justify-between items-center mb-6">
@@ -123,6 +152,7 @@
                     <label for="tipo" class="block text-sm font-medium text-gray-700 mb-1">Tipo de Limite <span class="asterisk">*</span></label>
                     <select id="tipo" name="credit_type" class="w-full p-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                         <option value="" disabled selected>Selecione um tipo...</option>
+                        <!-- Opções são adicionadas via JS, mas mantidas as de exemplo para consistência do código original -->
                         <option value="NCAVISTA">NCAVISTA</option>
                         <option value="NCAPRAZO">NCAPRAZO</option>
                         <option value="LIMITELEO">LIMITELEO</option>
@@ -161,6 +191,7 @@
         </div>
     </div>
     
+    <!-- Modal de Adicionar Novo Tipo de Limite -->
     <div id="typeFormModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden">
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg mx-4">
             <div class="flex justify-between items-center mb-6">
@@ -184,10 +215,11 @@
         </div>
     </div>
 
+    <!-- Modal de Confirmação de Exclusão (Desativação) -->
     <div id="deleteConfirmationModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden">
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md mx-4">
             <h2 class="text-2xl font-bold text-gray-800 mb-4">Confirmar Exclusão</h2>
-            <p class="text-gray-600 mb-6">Você tem certeza que deseja excluir o limite de crédito para o documento <strong id="documentToDelete" class="text-gray-900"></strong> - <strong id="typeToDelete" class="text-gray-900"></strong>.</p>
+            <p class="text-gray-600 mb-6">Você tem certeza que deseja excluir (desativar) o limite de crédito para o documento <strong id="documentToDelete" class="text-gray-900"></strong> - <strong id="typeToDelete" class="text-gray-900"></strong>?</p>
             <div class="flex justify-end gap-4">
                 <button id="cancelDeleteButton" class="bg-gray-200 text-gray-800 font-bold py-2 px-6 rounded-lg hover:bg-gray-300 transition">Cancelar</button>
                 <button id="confirmDeleteButton" class="bg-red-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-red-700 transition">Confirmar Exclusão</button>
@@ -195,10 +227,11 @@
         </div>
     </div>
 
+    <!-- Modal de Confirmação de Extração do Relatório (Todos os limites) -->
     <div id="reportConfirmationModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-60 hidden">
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md mx-4">
             <h2 class="text-2xl font-bold text-gray-800 mb-4">Confirmar Extração</h2>
-            <p class="text-gray-600 mb-6">Nenhum registro foi encontrado no período selecionado. Deseja extrair um relatório com todos os limites disponíveis?</p>
+            <p class="text-gray-600 mb-6">Nenhum registro foi encontrado no período e/ou filtro selecionado(s). Deseja extrair um relatório com **todos** os limites disponíveis?</p>
             <div class="flex justify-end gap-4">
                 <button id="cancelReportConfirmButton" class="bg-gray-200 text-gray-800 font-bold py-2 px-6 rounded-lg hover:bg-gray-300 transition">Cancelar</button>
                 <button id="confirmReportButton" class="bg-green-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-700 transition">Sim, Extrair Todos</button>
@@ -206,6 +239,7 @@
         </div>
     </div>
 
+    <!-- Modal de Geração de Relatório -->
     <div id="reportModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden">
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg mx-4">
             <div class="flex justify-between items-center mb-6">
@@ -213,7 +247,7 @@
                 <button id="closeReportModalButton" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
             </div>
             <form id="reportForm">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                         <label for="startDate" class="block text-sm font-medium text-gray-700 mb-1">Data de Início</label>
                         <input type="date" id="startDate" name="startDate" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
@@ -223,20 +257,30 @@
                         <input type="date" id="endDate" name="endDate" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                     </div>
                 </div>
+                <div class="mb-6">
+                    <label for="reportLimitType" class="block text-sm font-medium text-gray-700 mb-1">Filtrar por Tipo de Limite</label>
+                    <select id="reportLimitType" name="reportLimitType" class="w-full p-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="" selected>Todos os Tipos</option>
+                        <!-- Opções são preenchidas dinamicamente pelo JS -->
+                    </select>
+                </div>
                 <div class="flex justify-end gap-4">
                     <button type="button" id="cancelReportButton" class="bg-gray-200 text-gray-800 font-bold py-2 px-6 rounded-lg hover:bg-gray-300 transition">Cancelar</button>
                     <button type="submit" id="generateReportButton" class="bg-green-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-700 transition">Gerar Relatório</button>
                 </div>
             </form>
+            <!-- Resultado do relatório -->
             <div id="reportResult" class="mt-6 border-t pt-4 hidden">
                  </div>
         </div>
     </div>
 
-    <div id="notification" class="fixed bottom-5 right-5 bg-green-500 text-white py-3 px-6 rounded-lg shadow-lg transition-opacity duration-300 opacity-0 hidden">
+    <!-- Notificações de Sucesso/Erro -->
+    <div id="notification" class="fixed bottom-5 right-5 text-white py-3 px-6 rounded-lg shadow-lg transition-opacity duration-300 opacity-0 hidden">
         <p id="notificationMessage"></p>
     </div>
 
+    <!-- Modal de Alerta/Aviso -->
     <div id="warningModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden">
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md mx-4">
             <h2 class="text-2xl font-bold text-yellow-600 mb-4">Atenção</h2>
@@ -252,6 +296,7 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- CONFIGURAÇÕES E VARIÁVEIS GLOBAIS ---
+    // URL da API de sandbox
     const API_BASE_URL = 'https://ws.sandbox.autorei.net'; 
     let BEARER_TOKEN = ''; // Preenchido após o login
     let LOGGED_IN_USER_EMAIL = ''; // Preenchido após o login
@@ -259,6 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentLimits = [];
     let deletePayload = null;
     let allLimitsForReport = [];
+    let foundCustomerDocument = null; // Armazena o documento do cliente encontrado
 
     // --- ELEMENTOS DO DOM (TELA PRINCIPAL) ---
     const appScreen = document.getElementById('app');
@@ -271,6 +317,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutButton = document.getElementById('logoutButton');
     const extractReportButton = document.getElementById('extractReportButton');
     
+    // Novos Elementos para a UI do Cliente
+    const customerInfoSection = document.getElementById('customerInfoSection');
+    const initialStateMessage = document.getElementById('initialStateMessage');
+    const limitsTableTitle = document.getElementById('limitsTableTitle');
+    const limitsTableContainer = document.getElementById('limitsTableContainer');
+
+    const customerNameSpan = document.getElementById('customerName');
+    const customerDocumentSpan = document.getElementById('customerDocument');
+    const customerEmailSpan = document.getElementById('customerEmail');
+    const customerPhoneSpan = document.getElementById('customerPhone');
+    const customerContactNameSpan = document.getElementById('customerContactName');
+    const customerAddressSpan = document.getElementById('customerAddress');
+
     // --- ELEMENTOS DO DOM (LOGIN) ---
     const loginScreen = document.getElementById('loginScreen');
     const loginForm = document.getElementById('loginForm');
@@ -318,6 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const startDateInput = document.getElementById('startDate');
     const endDateInput = document.getElementById('endDate');
     const reportResultDiv = document.getElementById('reportResult');
+    const reportLimitTypeSelect = document.getElementById('reportLimitType');
     
     const notification = document.getElementById('notification');
     const notificationMessage = document.getElementById('notificationMessage');
@@ -328,6 +388,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- FUNÇÕES DE LOGIN/LOGOUT ---
     
+    // Mostra/Esconde o spinner no botão de login
     function showLoginSpinner(show) {
         if (show) {
             loginButtonText.classList.add('hidden');
@@ -340,6 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Gerencia a submissão do formulário de login
     async function handleLogin(e) {
         e.preventDefault();
         showLoginSpinner(true);
@@ -358,13 +420,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
-                    'Authorization': 'Basic YXBpLXdzOnBhc3N3b3JkLW1hc3Rlcg=='
+                    // Credenciais Basic Auth codificadas
+                    'Authorization': 'Basic YXBpLXdzOnBhc3N3b3JkLW1hc3Rlcg==' 
                 },
                 body: params
             });
 
             if (!response.ok) {
-                throw new Error('Email ou senha inválidos.');
+                // Tenta ler a mensagem de erro da API, se disponível
+                const errorBody = await response.json().catch(() => ({}));
+                throw new Error(errorBody.error_description || 'Email ou senha inválidos.');
             }
 
             const data = await response.json();
@@ -378,7 +443,8 @@ document.addEventListener('DOMContentLoaded', () => {
             userEmailDisplay.textContent = email;
             loginScreen.classList.add('hidden');
             appScreen.classList.remove('hidden');
-            loadAndRenderLimits();
+            
+            resetAppView(); // Redefine o estado da aplicação para a visualização de busca
 
         } catch (error) {
             console.error('Falha no login:', error);
@@ -388,6 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Gerencia o logout
     function handleLogout() {
         BEARER_TOKEN = '';
         LOGGED_IN_USER_EMAIL = '';
@@ -402,7 +469,54 @@ document.addEventListener('DOMContentLoaded', () => {
         loginScreen.classList.remove('hidden');
     }
 
+    // --- FUNÇÕES DE LÓGICA E UI DA APLICAÇÃO ---
+
+    function resetAppView() {
+        // Limpa e esconde as informações do cliente
+        customerInfoSection.classList.add('hidden');
+        customerNameSpan.textContent = '';
+        customerDocumentSpan.textContent = '';
+        customerEmailSpan.textContent = '';
+        customerPhoneSpan.textContent = '';
+        customerContactNameSpan.textContent = '';
+        customerAddressSpan.textContent = '';
+
+        // Mostra a mensagem de estado inicial
+        initialStateMessage.innerHTML = 'Utilize a busca acima para encontrar um cliente pelo CPF/CNPJ.';
+        initialStateMessage.classList.remove('hidden');
+        initialStateMessage.classList.remove('text-red-600');
+        
+        // Limpa a tabela de limites e esconde o título
+        // Ajusta colspan para 7 (era 8 antes da remoção da coluna Documento)
+        tableBody.innerHTML = '<tr><td colspan="7" class="text-center p-8 text-gray-500">Nenhum limite de crédito encontrado.</td></tr>';
+        limitsTableTitle.classList.add('hidden');
+        limitsTableContainer.classList.add('hidden');
+
+        // Desabilita botões
+        toggleActionButtons(false);
+        foundCustomerDocument = null;
+    }
+
+    function toggleActionButtons(enabled) {
+        const buttons = [addLimitButton, addTypeButton];
+        const baseClasses = 'w-full md:w-auto text-white font-bold py-3 px-6 rounded-lg transition duration-300 shadow-sm';
+        
+        buttons.forEach(btn => {
+            btn.disabled = !enabled;
+            btn.className = baseClasses;
+            if (enabled) {
+                btn.classList.add(btn.id === 'addLimitButton' ? 'bg-blue-600' : 'bg-gray-600');
+                btn.classList.add(btn.id === 'addLimitButton' ? 'hover:bg-blue-700' : 'hover:bg-gray-700');
+                btn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            } else {
+                btn.classList.add('bg-gray-400', 'cursor-not-allowed');
+                btn.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'bg-gray-600', 'hover:bg-gray-700');
+            }
+        });
+    }
+
     // --- FUNÇÕES DE LOG ---
+    // Simula o log de ações (apenas no console)
     function logChange(action, document, details = {}) {
         const timestamp = new Date().toLocaleString('pt-BR');
         const logEntry = {
@@ -416,9 +530,40 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- FUNÇÕES DE API ---
+    
+    // Busca dados do Cliente na API /customer
+    async function fetchCustomer(document) {
+        const cleanDoc = document.replace(/\D/g, '');
+        const url = `${API_BASE_URL}/customer/${cleanDoc}/document`;
+        
+        try {
+            const response = await fetch(url, { headers: { 'Authorization': `Bearer ${BEARER_TOKEN}` } });
+            
+            if (response.status === 404) {
+                 // Cliente não encontrado - Retorna uma mensagem de erro específica
+                throw new Error(`O documento ${formatDocument(document)} não foi encontrado na base de clientes.`);
+            }
+            if (!response.ok) {
+                const errorBody = await response.json().catch(() => ({}));
+                throw new Error(errorBody.message || `Erro ao buscar cliente: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            
+            // CORREÇÃO: Acessa o objeto aninhado 'customer'
+            const customerData = data.customer || data; 
+            
+            return { success: true, data: customerData };
+        } catch (error) {
+            console.error('Falha ao buscar cliente:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    // Busca limites de crédito na API /creditLimit
     async function fetchCreditLimits(document = '') {
         const url = new URL(`${API_BASE_URL}/creditLimit/list`);
-        url.searchParams.append('limit', '25');
+        url.searchParams.append('limit', '25'); // Limite padrão de 25
         if (document) url.searchParams.append('document', document.replace(/\D/g, ''));
 
         try {
@@ -428,18 +573,27 @@ document.addEventListener('DOMContentLoaded', () => {
             return { success: true, data };
         } catch (error) {
             console.error('Falha ao buscar limites:', error);
-            showNotification(`Erro ao buscar: ${error.message}`, 'error');
+            showNotification(`Erro ao buscar limites: ${error.message}`, 'error');
             return { success: false, data: [] };
         }
     }
 
+    // Salva ou atualiza um limite de crédito
     async function saveCreditLimit(limitData) {
         const isEditing = !!isEditingInput.value;
         
         try {
-            const response = await fetch(`${API_BASE_URL}/creditLimit/save`, { method: 'POST', headers: { 'Authorization': `Bearer ${BEARER_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify(limitData) });
+            const response = await fetch(`${API_BASE_URL}/creditLimit/save`, { 
+                method: 'POST', 
+                headers: { 
+                    'Authorization': `Bearer ${BEARER_TOKEN}`, 
+                    'Content-Type': 'application/json' 
+                }, 
+                body: JSON.stringify(limitData) 
+            });
+            
             if (!response.ok) {
-                 const errorBody = await response.json();
+                 const errorBody = await response.json().catch(() => ({}));
                  throw new Error(errorBody.message || `Erro na API: ${response.statusText}`);
             }
             const data = await response.json();
@@ -452,11 +606,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
+    // Salva um novo tipo de limite de crédito
     async function saveCreditLimitType(typeData) {
         try {
-            const response = await fetch(`${API_BASE_URL}/creditLimit/saveTypeCreditLimit`, { method: 'POST', headers: { 'Authorization': `Bearer ${BEARER_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify(typeData) });
+            const response = await fetch(`${API_BASE_URL}/creditLimit/saveTypeCreditLimit`, { 
+                method: 'POST', 
+                headers: { 
+                    'Authorization': `Bearer ${BEARER_TOKEN}`, 
+                    'Content-Type': 'application/json' 
+                }, 
+                body: JSON.stringify(typeData) 
+            });
+            
             if (!response.ok) {
-                const errorBody = await response.json();
+                const errorBody = await response.json().catch(() => ({}));
                 throw new Error(errorBody.message || `Erro na API: ${response.statusText}`);
             }
             const data = await response.json();
@@ -470,44 +633,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function checkCustomerExists(document) {
-        const url = `${API_BASE_URL}/customer/${document}/document`;
-        try {
-            const response = await fetch(url, {
-                headers: { 'Authorization': `Bearer ${BEARER_TOKEN}` }
-            });
-            if (response.ok) { // Status 200-299
-                return true;
-            }
-            if (response.status === 404) {
-                return false;
-            }
-            // Trata outros erros
-            const errorBody = await response.json().catch(() => null);
-            throw new Error(errorBody?.message || `Erro ao verificar cliente: ${response.statusText}`);
-        } catch (error) {
-            console.error('Falha ao verificar cliente:', error);
-            showNotification(`Erro ao verificar cliente: ${error.message}`, 'error');
-            return false; // Trata outros erros como "cliente não encontrado" por segurança
-        }
-    }
-
+    // Desativa um limite de crédito (simula a exclusão)
     async function deleteCreditLimit(document, credit_type) {
         const limitToDelete = currentLimits.find(l => l.document === document && l.credit_type === credit_type);
         if (!limitToDelete) {
             showNotification('Limite não encontrado para desativar.', 'error');
             return;
         }
-        const updatedLimit = { ...limitToDelete, active: false };
+        
+        // Define 'active' como false para desativar
+        const updatedLimit = { ...limitToDelete, active: false }; 
+        
         const result = await saveCreditLimit(updatedLimit);
         if (result.success) {
             showNotification('Limite desativado com sucesso!', 'success');
             logChange('DESATIVOU LIMITE', document, { type: credit_type });
-            loadAndRenderLimits(searchInput.value);
+            loadAndRenderLimits(foundCustomerDocument); // Recarrega os limites do cliente atual
         }
     }
 
     // --- FUNÇÕES DE RENDERIZAÇÃO E UI ---
+    
+    // Formata CNPJ/CPF
     function formatDocument(doc) {
         if (!doc) return '';
         const cleanDoc = doc.replace(/\D/g, '');
@@ -516,20 +663,24 @@ document.addEventListener('DOMContentLoaded', () => {
         return doc;
     }
 
+    // Formata valor como moeda BRL
     function formatCurrency(value) {
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        // Garante que o valor seja tratado como número
+        const numericValue = Number(value) || 0; 
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(numericValue);
     }
     
+    // Renderiza status booleano com badge
     function formatBoolean(value) {
         const text = value ? 'Sim' : 'Não';
         const color = value ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
         return `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${color}">${text}</span>`;
     }
 
+    // Formata data e hora
     function formatDateTime(isoString) {
         if (!isoString) return 'N/A';
         try {
-            // A API pode não retornar a data, então tratamos isso
             const date = new Date(isoString);
             if (isNaN(date.getTime())) return 'N/A';
             return date.toLocaleString('pt-BR');
@@ -538,22 +689,53 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Renderiza as informações do cliente na tela
+    function renderCustomerInfo(customer) {
+        // A API retorna address como um array de endereços, mas a especificação exige exibir o principal.
+        // O cliente fornecido no exemplo do Postman possui dois campos "address",
+        // um contendo um array de endereços e outro o "registrationAddress". 
+        // Vamos priorizar o primeiro endereço no array 'address' que é o principal (principal: true)
+        // ou o objeto 'registrationAddress' que você usou no seu JSON de exemplo (simplificando para o primeiro endereço).
+        const addressData = Array.isArray(customer.address) && customer.address.length > 0
+            ? customer.address.find(addr => addr.principal) || customer.address[0]
+            : customer.registrationAddress || {};
+            
+        const fullAddress = [
+            addressData.street,
+            addressData.number,
+            addressData.complement ? `(${addressData.complement})` : ''
+        ].filter(n => n).join(', ') + 
+        (addressData.city ? `. ${addressData.city} - ${addressData.state}` : '') + 
+        (addressData.zipcode ? ` (${addressData.zipcode})` : '');
+
+        customerNameSpan.textContent = customer.name || 'N/A';
+        customerDocumentSpan.textContent = formatDocument(customer.document) || 'N/A';
+        customerEmailSpan.textContent = customer.email || 'N/A';
+        customerPhoneSpan.textContent = customer.phone || 'N/A';
+        customerContactNameSpan.textContent = customer.contactName || 'N/A';
+        customerAddressSpan.textContent = fullAddress || 'N/A';
+        
+        // Esconde a mensagem inicial e mostra as informações do cliente
+        initialStateMessage.classList.add('hidden');
+        customerInfoSection.classList.remove('hidden');
+    }
+
+    // Renderiza a tabela de limites
     function renderTable(limits) {
         tableBody.innerHTML = '';
+        currentLimits = limits; 
+
+        // O colspan mudou para 7 após a remoção da coluna Documento
         if (!limits || limits.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="8" class="text-center p-8 text-gray-500">Nenhum limite de crédito encontrado.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="7" class="text-center p-8 text-gray-500">Cliente encontrado, mas não possui limites de crédito cadastrados.</td></tr>';
             return;
         }
         
-        // A API real pode não ter last_updated, então ordenamos por outro campo ou mantemos a ordem
-        const sortedLimits = limits; // .sort((a, b) => new Date(b.last_updated) - new Date(a.last_updated));
-        currentLimits = sortedLimits;
-
-        sortedLimits.forEach(limit => {
+        limits.forEach(limit => {
             const row = document.createElement('tr');
             row.className = 'hover:bg-gray-50';
+            // Linha da tabela ajustada para 7 colunas (Documento removido)
             row.innerHTML = `
-                <td class="py-4 px-4 whitespace-nowrap text-sm font-medium text-gray-900" data-label="Documento">${formatDocument(limit.document)}</td>
                 <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500" data-label="Tipo">${limit.credit_type}</td>
                 <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500" data-label="Valor">${formatCurrency(limit.value)}</td>
                 <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500" data-label="Saldo">${formatCurrency(limit.balance)}</td>
@@ -562,17 +744,82 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500" data-label="Última Alteração">${formatDateTime(limit.last_updated || limit.date_created)}</td>
                 <td class="py-4 px-4 whitespace-nowrap text-sm font-medium text-center" data-label="Ações">
                     <button class="edit-btn text-indigo-600 hover:text-indigo-900" data-document="${limit.document}" data-type="${limit.credit_type}">Editar</button>
+                    <!-- O botão de excluir na verdade aciona a desativação (active: false) -->
                     <button class="delete-btn text-red-600 hover:text-red-900 ml-4" data-document="${limit.document}" data-type="${limit.credit_type}">Excluir</button>
                 </td>`;
             tableBody.appendChild(row);
         });
     }
 
-    async function loadAndRenderLimits(document = '') {
+    // Carrega e renderiza os limites (somente do cliente encontrado)
+    async function loadAndRenderLimits(document = foundCustomerDocument) {
+        if (!document) {
+             renderTable([]); 
+             return;
+        }
         const result = await fetchCreditLimits(document);
         if (result.success) renderTable(result.data);
     }
 
+    // --- LÓGICA DE BUSCA PRINCIPAL ---
+
+    async function handleSearch() {
+        const document = searchInput.value.trim();
+        if (!document) {
+            resetAppView();
+            showNotification('Por favor, digite um documento (CPF/CNPJ).', 'error');
+            return;
+        }
+
+        if (!validateDocumentInput(searchInput)) {
+            showNotification('Documento inválido. Deve ter 11 ou 14 dígitos.', 'error');
+            return;
+        }
+
+        resetAppView(); // Limpa a tela antes de começar
+        
+        // 1. Busca do Cliente
+        const customerResult = await fetchCustomer(document);
+
+        if (customerResult.success) {
+            
+            // CORREÇÃO: Usamos String() e || '' para garantir que .document é uma string,
+            // evitando o erro "Cannot read properties of undefined (reading 'replace')"
+            foundCustomerDocument = String(customerResult.data.document || '').replace(/\D/g, ''); 
+            
+            if (!foundCustomerDocument) {
+                showNotification('Erro: O documento retornado pela API do cliente está ausente ou inválido.', 'error');
+                resetAppView();
+                return;
+            }
+            
+            renderCustomerInfo(customerResult.data);
+            toggleActionButtons(true); // Habilita botões
+            
+            // 2. Busca de Limites
+            const limitsResult = await fetchCreditLimits(foundCustomerDocument);
+            
+            limitsTableTitle.classList.remove('hidden');
+            limitsTableContainer.classList.remove('hidden');
+            
+            if (limitsResult.success) {
+                renderTable(limitsResult.data);
+            } else {
+                // Se o cliente foi encontrado mas não tem limites (fetchCreditLimits pode falhar)
+                tableBody.innerHTML = '<tr><td colspan="7" class="text-center p-8 text-gray-500">Cliente encontrado, mas não possui limites de crédito cadastrados.</td></tr>';
+            }
+        } else {
+            // Cliente não encontrado ou erro
+            // Exibe a mensagem de erro simplificada na tela
+            initialStateMessage.innerHTML = `<p class="text-center text-xl text-red-600 font-semibold">${customerResult.error}</p>`;
+            initialStateMessage.classList.remove('hidden');
+            initialStateMessage.classList.remove('text-gray-500'); // Remove o estilo de texto normal
+            toggleActionButtons(false); 
+            foundCustomerDocument = null;
+        }
+    }
+    
+    // Altera openModal para pré-preencher o documento se um cliente já foi encontrado
     function openModal(data = null) {
         // Primeiro, reseta o formulário para um estado limpo e conhecido.
         creditLimitForm.reset();
@@ -588,16 +835,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Se 'data' for fornecido, estamos no modo de edição.
         if (data) { 
             modalTitle.textContent = 'Editar Limite de Crédito';
-            
             documentoInput.value = data.document;
             documentoInput.readOnly = true;
             documentoInput.classList.add('bg-gray-200', 'text-gray-500');
             
-            // Verifica se o tipo de crédito do registro já existe na lista de opções.
+            // Adiciona o tipo ao select se ele não existir
             const typeExists = Array.from(tipoSelect.options).some(opt => opt.value === data.credit_type);
-
-            // Se o tipo não existir, adiciona-o dinamicamente ao select.
-            // Isso garante que o valor da API sempre possa ser exibido.
             if (!typeExists && data.credit_type) {
                 const newOption = document.createElement('option');
                 newOption.value = data.credit_type;
@@ -606,13 +849,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             tipoSelect.value = data.credit_type;
-            tipoSelect.disabled = true;
+            tipoSelect.disabled = true; // Não permite alterar o tipo em edição
             tipoSelect.classList.add('bg-gray-200', 'text-gray-500'); 
     
-            // Garante que os valores sejam numéricos antes de formatar.
+            // Formata valores numéricos para exibição com vírgula (R$)
             const numericValue = Number(data.value) || 0;
             const numericBalance = Number(data.balance) || 0;
-    
             valorInput.value = numericValue.toFixed(2).replace('.', ',');
             saldoInput.value = numericBalance.toFixed(2).replace('.', ',');
             
@@ -620,6 +862,14 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('semLimite').checked = data.without_credit_limit;
             
             isEditingInput.value = JSON.stringify({ document: data.document, type: data.credit_type });
+        } else if (foundCustomerDocument) {
+             // Pré-preenche o campo de documento com o cliente encontrado, se estiver adicionando
+             documentoInput.value = formatDocument(foundCustomerDocument);
+             documentoInput.readOnly = true;
+             documentoInput.classList.add('bg-gray-200', 'text-gray-500');
+        } else {
+             documentoInput.readOnly = false;
+             documentoInput.classList.remove('bg-gray-200', 'text-gray-500');
         }
         
         updateSaveButtonState();
@@ -628,26 +878,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function closeModal() { formModal.classList.add('hidden'); }
     
-    function openTypeModal() {
-        creditTypeForm.reset();
-        typeFormModal.classList.remove('hidden');
-        updateSaveTypeButtonState();
-    }
-
-    function closeTypeModal() { typeFormModal.classList.add('hidden'); }
-    function openDeleteModal(doc, type) {
-        deletePayload = { doc, type };
-        documentToDeleteSpan.textContent = formatDocument(doc);
-        typeToDeleteSpan.textContent = type;
-        deleteConfirmationModal.classList.remove('hidden');
-    }
-    function closeDeleteModal() { deleteConfirmationModal.classList.add('hidden'); }
-
-    function openReportConfirmationModal() {
-        reportConfirmationModal.classList.remove('hidden');
-    }
-    function closeReportConfirmationModal() {
-        reportConfirmationModal.classList.add('hidden');
+    // --- FUNÇÕES AUXILIARES PARA RELATÓRIO ---
+    
+    // Preenche o dropdown de tipos de limite no modal de relatório
+    function populateReportLimitTypes() {
+        reportLimitTypeSelect.innerHTML = '<option value="" selected>Todos os Tipos</option>';
+        const options = Array.from(tipoSelect.options);
+        
+        options.forEach(option => {
+            if (option.value) {
+                const newOption = document.createElement('option');
+                newOption.value = option.value;
+                newOption.textContent = option.textContent;
+                reportLimitTypeSelect.appendChild(newOption);
+            }
+        });
     }
 
     function openReportModal() {
@@ -655,39 +900,64 @@ document.addEventListener('DOMContentLoaded', () => {
         reportResultDiv.classList.add('hidden');
         reportResultDiv.innerHTML = '';
         reportModal.classList.remove('hidden');
+        populateReportLimitTypes(); // Garante que os tipos de limite estejam atualizados
     }
 
     function closeReportModal() {
         reportModal.classList.add('hidden');
     }
 
-    function showWarningModal(message) {
-        warningMessage.textContent = message;
-        warningModal.classList.remove('hidden');
-    }
-    function closeWarningModal() {
-        warningModal.classList.add('hidden');
-    }
+    // Gerencia a submissão do formulário de Relatório
+    async function handleGenerateReport(e) {
+        e.preventDefault();
+        
+        const startDateValue = startDateInput.value;
+        const endDateValue = endDateInput.value;
+        const selectedType = reportLimitTypeSelect.value;
+        
+        if (!startDateValue || !endDateValue) {
+            showNotification('Por favor, selecione a data de início e de fim.', 'error');
+            return;
+        }
+        
+        // As datas devem ser tratadas com fuso horário para garantir a faixa correta
+        const startDate = new Date(startDateValue + 'T00:00:00');
+        const endDate = new Date(endDateValue + 'T23:59:59');
 
-    function updateCreditTypeDropdown(newType) {
-        const newOption = document.createElement('option');
-        newOption.value = newType.code;
-        newOption.textContent = newType.name;
-        tipoSelect.appendChild(newOption);
-    }
+        if (endDate < startDate) {
+            showNotification('A data final não pode ser anterior à data inicial.', 'error');
+            return;
+        }
 
-    function showNotification(message, type = 'success') {
-        notificationMessage.textContent = message;
-        notification.className = 'fixed bottom-5 right-5 text-white py-3 px-6 rounded-lg shadow-lg transition-opacity duration-300 opacity-0';
-        notification.classList.add(type === 'error' ? 'bg-red-500' : 'bg-green-500');
-        notification.classList.remove('hidden');
-        setTimeout(() => notification.classList.remove('opacity-0'), 10);
-        setTimeout(() => {
-            notification.classList.add('opacity-0');
-            setTimeout(() => notification.classList.add('hidden'), 300);
-        }, 4000);
-    }
+        // Busca todos os limites para filtrar por data e tipo
+        const allLimitsResult = await fetchCreditLimits(); 
+        if (!allLimitsResult.success) {
+            showNotification('Não foi possível buscar os dados para o relatório.', 'error');
+            return;
+        }
+        
+        allLimitsForReport = allLimitsResult.data;
 
+        // Filtra os limites por data e tipo
+        const filteredLimits = allLimitsForReport.filter(limit => {
+            const updateDate = limit.last_updated || limit.date_created;
+            if (!updateDate) return false;
+            const lastUpdated = new Date(updateDate);
+            
+            const matchesDate = lastUpdated >= startDate && lastUpdated <= endDate;
+            const matchesType = !selectedType || limit.credit_type === selectedType;
+
+            return matchesDate && matchesType;
+        });
+
+        if (filteredLimits.length > 0) {
+            renderReport(filteredLimits);
+        } else {
+            openReportConfirmationModal();
+        }
+    }
+    
+    // Renderiza a tabela de resultados do relatório
     function renderReport(data) {
         reportResultDiv.innerHTML = '';
         reportResultDiv.classList.remove('hidden');
@@ -697,13 +967,14 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
+        // Ordena por data (última alteração ou criação)
         const sortedData = data.sort((a, b) => new Date(b.last_updated || b.date_created) - new Date(a.last_updated || a.date_created));
 
         let tableHTML = `
             <h3 class="text-lg font-bold mb-2">Relatório de Alterações</h3>
-            <div class="max-h-64 overflow-y-auto">
+            <div class="max-h-64 overflow-y-auto border rounded-lg">
                 <table class="min-w-full text-sm">
-                    <thead class="bg-gray-100">
+                    <thead class="bg-gray-100 sticky top-0">
                         <tr>
                             <th class="p-2 text-left">Documento</th>
                             <th class="p-2 text-left">Tipo</th>
@@ -719,14 +990,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         sortedData.forEach(limit => {
             tableHTML += `
-                <tr class="border-b">
-                    <td class="p-2">${formatDocument(limit.document)}</td>
-                    <td class="p-2">${limit.credit_type}</td>
-                    <td class="p-2">${formatCurrency(limit.value)}</td>
-                    <td class="p-2">${formatCurrency(limit.balance)}</td>
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="p-2 whitespace-nowrap">${formatDocument(limit.document)}</td>
+                    <td class="p-2 whitespace-nowrap">${limit.credit_type}</td>
+                    <td class="p-2 whitespace-nowrap">${formatCurrency(limit.value)}</td>
+                    <td class="p-2 whitespace-nowrap">${formatCurrency(limit.balance)}</td>
                     <td class="p-2 text-center">${formatBoolean(limit.active)}</td>
                     <td class="p-2 text-center">${formatBoolean(limit.without_credit_limit)}</td>
-                    <td class="p-2">${formatDateTime(limit.last_updated || limit.date_created)}</td>
+                    <td class="p-2 whitespace-nowrap">${formatDateTime(limit.last_updated || limit.date_created)}</td>
                 </tr>
             `;
         });
@@ -743,25 +1014,29 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('downloadCsvButton').addEventListener('click', () => downloadReportAsCSV(sortedData));
     }
 
+    // Função para baixar o relatório como CSV
     function downloadReportAsCSV(data) {
         const headers = ['Documento', 'Tipo', 'Valor', 'Saldo', 'Ativo', 'Sem Limite Alem Saldo', 'Ultima Alteracao'];
-        const csvRows = [headers.join(',')];
+        const csvRows = [headers.join(';')];
 
         data.forEach(limit => {
+            // Usamos aspas simples para garantir que o número do documento seja tratado como texto no Excel/CSV
             const row = [
-                `'${limit.document}'`,
+                `'${limit.document}'`, 
                 limit.credit_type,
-                limit.value,
-                limit.balance,
-                limit.active,
-                limit.without_credit_limit,
+                // Garantimos que valores numéricos usem ponto como separador decimal para CSV padrão
+                (Number(limit.value) || 0).toFixed(2).replace('.', ','), 
+                (Number(limit.balance) || 0).toFixed(2).replace('.', ','),
+                limit.active ? 'Sim' : 'Não',
+                limit.without_credit_limit ? 'Sim' : 'Não',
                 formatDateTime(limit.last_updated || limit.date_created)
             ];
-            csvRows.push(row.join(','));
+            csvRows.push(row.join(';')); // Usamos ponto e vírgula como separador para CSV em pt-BR
         });
 
         const csvString = csvRows.join('\n');
-        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        // Cria um Blob com o encoding UTF-8 (necessário para caracteres especiais)
+        const blob = new Blob(["\uFEFF" + csvString], { type: 'text/csv;charset=utf-8;' }); 
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
         link.setAttribute('href', url);
@@ -771,8 +1046,60 @@ document.addEventListener('DOMContentLoaded', () => {
         link.click();
         document.body.removeChild(link);
     }
+    
+    // Funções auxiliares para fechar os demais modais
+    function openTypeModal() {
+        creditTypeForm.reset();
+        typeFormModal.classList.remove('hidden');
+        updateSaveTypeButtonState();
+    }
+    function closeTypeModal() { typeFormModal.classList.add('hidden'); }
+    function openDeleteModal(doc, type) {
+        deletePayload = { doc, type };
+        documentToDeleteSpan.textContent = formatDocument(doc);
+        typeToDeleteSpan.textContent = type;
+        deleteConfirmationModal.classList.remove('hidden');
+    }
+    function closeDeleteModal() { deleteConfirmationModal.classList.add('hidden'); }
+    function openReportConfirmationModal() {
+        reportConfirmationModal.classList.remove('hidden');
+    }
+    function closeReportConfirmationModal() {
+        reportConfirmationModal.classList.add('hidden');
+    }
+    function showWarningModal(message) {
+        warningMessage.textContent = message;
+        warningModal.classList.remove('hidden');
+    }
+    function closeWarningModal() {
+        warningModal.classList.add('hidden');
+    }
 
+    // Adiciona um novo tipo de crédito ao dropdown
+    function updateCreditTypeDropdown(newType) {
+        const newOption = document.createElement('option');
+        newOption.value = newType.code;
+        newOption.textContent = newType.name;
+        tipoSelect.appendChild(newOption);
+        // Não atualiza o dropdown de relatório aqui, ele é atualizado ao abrir a modal
+    }
+
+    // Exibe notificação temporária
+    function showNotification(message, type = 'success') {
+        notificationMessage.textContent = message;
+        notification.className = 'fixed bottom-5 right-5 text-white py-3 px-6 rounded-lg shadow-lg transition-opacity duration-300 opacity-0';
+        notification.classList.add(type === 'error' ? 'bg-red-500' : 'bg-green-500');
+        notification.classList.remove('hidden');
+        setTimeout(() => notification.classList.remove('opacity-0'), 10);
+        setTimeout(() => {
+            notification.classList.add('opacity-0');
+            setTimeout(() => notification.classList.add('hidden'), 300);
+        }, 4000);
+    }
+    
     // --- FUNÇÕES DE VALIDAÇÃO E FORMATAÇÃO ---
+    
+    // Valida se o documento tem 11 (CPF) ou 14 (CNPJ) dígitos
     function validateDocumentInput(inputElement) {
         const value = inputElement.value.replace(/\D/g, '');
         if (value.length > 0 && value.length !== 11 && value.length !== 14) {
@@ -784,6 +1111,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Valida se o código do tipo de limite não contém espaços
     function validateTypeCodeInput() {
         const hasSpace = /\s/.test(typeCodeInput.value);
         if (hasSpace) {
@@ -795,21 +1123,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
+    // Formata o input de moeda em tempo real (ex: 12345 -> 123,45)
     function formatCurrencyInput(e) {
         let value = e.target.value.replace(/\D/g, '');
         if (value === '') {
             e.target.value = '';
             return;
         }
-        value = (parseInt(value, 10) / 100).toFixed(2);
+        // Converte para centavos e depois para float com 2 casas decimais
+        value = (parseInt(value, 10) / 100).toFixed(2); 
         if (isNaN(value)) value = '0.00';
-        e.target.value = value.replace('.', ',');
+        // Exibe com vírgula como separador decimal
+        e.target.value = value.replace('.', ','); 
     }
 
+    // Habilita/desabilita o botão Salvar Limite com base na validação
     function updateSaveButtonState() {
         const isDocumentValid = validateDocumentInput(documentoInput) && documentoInput.value.length > 0;
         const isTypeSelected = tipoSelect.value !== "";
-        const isValorValid = valorInput.value.trim() !== '' && valorInput.value.trim() !== '0,00';
+        // Verifica se o valor é preenchido e diferente de "0,00"
+        const isValorValid = valorInput.value.trim() !== '' && valorInput.value.replace(',', '.').trim() !== '0.00'; 
 
         if (isDocumentValid && isTypeSelected && isValorValid) {
             saveLimitButton.disabled = false;
@@ -822,6 +1155,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Habilita/desabilita o botão Salvar Tipo com base na validação
     function updateSaveTypeButtonState() {
         const isNameValid = typeNameInput.value.trim() !== '';
         const isCodeValid = typeCodeInput.value.trim() !== '' && !/\s/.test(typeCodeInput.value);
@@ -838,24 +1172,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- MANIPULADORES DE EVENTOS ---
+    
+    // Login e Logout
     loginForm.addEventListener('submit', handleLogin);
     logoutButton.addEventListener('click', handleLogout);
 
-    searchButton.addEventListener('click', () => { if (validateDocumentInput(searchInput)) loadAndRenderLimits(searchInput.value); });
+    // Busca (Chamada ao novo fluxo handleSearch)
+    searchButton.addEventListener('click', handleSearch);
     searchInput.addEventListener('keyup', (e) => {
         validateDocumentInput(searchInput);
-        if (e.key === 'Enter' && searchInput.value.trim() !== '' && validateDocumentInput(searchInput)) {
-            loadAndRenderLimits(searchInput.value);
+        if (e.key === 'Enter') {
+            handleSearch();
         } else if (e.key === 'Enter' && searchInput.value.trim() === '') {
-            loadAndRenderLimits();
+            resetAppView();
         }
     });
 
-
+    // Botões principais
     addLimitButton.addEventListener('click', () => openModal());
     addTypeButton.addEventListener('click', openTypeModal);
     extractReportButton.addEventListener('click', openReportModal);
 
+    // Fechar Modais
     closeModalButton.addEventListener('click', closeModal);
     cancelButton.addEventListener('click', closeModal);
     closeTypeModalButton.addEventListener('click', closeTypeModal);
@@ -865,16 +1203,19 @@ document.addEventListener('DOMContentLoaded', () => {
     cancelDeleteButton.addEventListener('click', closeDeleteModal);
     closeWarningModalButton.addEventListener('click', closeWarningModal);
 
+    // Confirmação de Relatório Total
     cancelReportConfirmButton.addEventListener('click', closeReportConfirmationModal);
     confirmReportButton.addEventListener('click', () => {
         if (allLimitsForReport.length > 0) {
-            renderReport(allLimitsForReport);
+            renderReport(allLimitsForReport); // Renderiza todos os limites
         }
         closeReportConfirmationModal();
     });
 
+    // Geração de Relatório
     reportForm.addEventListener('submit', handleGenerateReport);
 
+    // Ações da Tabela (Editar/Excluir)
     tableBody.addEventListener('click', (e) => {
         const target = e.target;
         const doc = target.dataset.document;
@@ -888,6 +1229,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Confirmação de Exclusão
     confirmDeleteButton.addEventListener('click', () => {
         if (deletePayload) {
             deleteCreditLimit(deletePayload.doc, deletePayload.type);
@@ -895,23 +1237,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
+    // Eventos de input para formatação e validação de limite
     valorInput.addEventListener('input', formatCurrencyInput);
     valorInput.addEventListener('keyup', updateSaveButtonState);
     saldoInput.addEventListener('input', formatCurrencyInput);
     documentoInput.addEventListener('keyup', updateSaveButtonState);
     tipoSelect.addEventListener('change', updateSaveButtonState);
     
+    // Eventos de input para validação de tipo de limite
     typeNameInput.addEventListener('keyup', updateSaveTypeButtonState);
     typeCodeInput.addEventListener('keyup', () => {
         validateTypeCodeInput();
         updateSaveTypeButtonState();
     });
 
+    // Submissão do formulário de Limite
     creditLimitForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        
+        // Verifica se o botão está desabilitado, impede submissão sem os campos obrigatórios
+        if (saveLimitButton.disabled) return; 
+
         const isEditing = !!isEditingInput.value;
         const formData = new FormData(creditLimitForm);
-        const value = parseFloat(formData.get('value').replace(',', '.')) || 0;
+        // Converte a vírgula para ponto antes de converter para float
+        const value = parseFloat(formData.get('value').replace(',', '.')) || 0; 
         const balance = parseFloat(formData.get('balance').replace(',', '.')) || 0;
 
         if (value < 0 || balance < 0) {
@@ -919,26 +1269,36 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        const documentValue = formData.get('document').replace(/\D/g, '');
+        // CORREÇÃO: Garante que formData.get('document') seja uma string antes do replace
+        const documentValue = String(formData.get('document') || '').replace(/\D/g, '');
+
+        if (!documentValue) {
+            showNotification('Erro: Documento inválido no formulário.', 'error');
+            return;
+        }
+
         let creditType;
         
         if (isEditing) {
             const originalData = JSON.parse(isEditingInput.value);
             creditType = originalData.type;
         } else {
-            // Valida se o cliente existe antes de continuar
-            const customerExists = await checkCustomerExists(documentValue);
-            if (!customerExists) {
-                showWarningModal(`Cliente com o documento ${formatDocument(documentValue)} não encontrado na base. Não é possível criar o limite de crédito.`);
-                return;
+            // Se for adição, verifica a existência do cliente (já verificada na busca, mas mantida a validação de segurança)
+            if (!foundCustomerDocument || foundCustomerDocument !== documentValue) {
+                // Se o cliente não foi buscado ou o documento foi alterado, faz a busca novamente
+                const customerExists = await fetchCustomer(documentValue);
+                if (!customerExists.success) {
+                    showWarningModal(customerExists.error);
+                    return;
+                }
             }
-
+            
             creditType = formData.get('credit_type');
             
-            // A validação de duplicidade deve ser feita no backend, mas mantemos uma verificação simples
-            const alreadyExists = currentLimits.some(limit => limit.document === documentValue && limit.credit_type === creditType);
+            // Verifica duplicidade no front-end antes de enviar
+            const alreadyExists = currentLimits.some(limit => limit.document === documentValue && limit.credit_type === creditType && limit.active);
             if (alreadyExists) {
-                showWarningModal('Já existe um limite cadastrado para este documento com o tipo selecionado.');
+                showWarningModal('Já existe um limite ATIVO cadastrado para este documento com o tipo selecionado.');
                 return;
             }
         }
@@ -948,7 +1308,7 @@ document.addEventListener('DOMContentLoaded', () => {
             credit_type: creditType,
             value: value,
             balance: balance,
-            active: formData.get('active') === 'on',
+            active: formData.get('active') === 'on', // Checkbox value is 'on' if checked
             without_credit_limit: formData.get('without_credit_limit') === 'on'
         };
 
@@ -956,19 +1316,25 @@ document.addEventListener('DOMContentLoaded', () => {
         if (result.success) {
             closeModal();
             showNotification('Limite salvo com sucesso!', 'success');
-            loadAndRenderLimits(searchInput.value);
+            // Recarrega os limites do cliente atual para atualizar a tabela
+            loadAndRenderLimits(documentValue); 
         }
     });
 
+    // Submissão do formulário de Tipo de Limite
     creditTypeForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (saveTypeButton.disabled) return;
+
         if (!validateTypeCodeInput()) {
             showNotification('Código do tipo não pode conter espaços.', 'error');
             return;
         }
+        
         const formData = new FormData(creditTypeForm);
         const typeData = { name: formData.get('name'), code: formData.get('code') };
         
+        // Verifica se o código de tipo já existe no dropdown (case insensitive)
         const existingType = Array.from(tipoSelect.options).some(option => option.value.toUpperCase() === typeData.code.toUpperCase());
         if (existingType) {
             showWarningModal('O código de tipo informado já existe. Por favor, utilize outro código.');
@@ -979,48 +1345,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (result.success) {
             closeTypeModal();
             showNotification(`Tipo "${result.data.name}" salvo com sucesso!`, 'success');
+            populateReportLimitTypes(); // Atualiza o seletor de relatório
         }
     });
 
-    async function handleGenerateReport(e) {
-        e.preventDefault();
-        const startDate = new Date(startDateInput.value + 'T00:00:00');
-        const endDate = new Date(endDateInput.value + 'T23:59:59');
-
-        if (!startDateInput.value || !endDateInput.value) {
-            showNotification('Por favor, selecione a data de início e de fim.', 'error');
-            return;
-        }
-
-        if (endDate < startDate) {
-            showNotification('A data final não pode ser anterior à data inicial.', 'error');
-            return;
-        }
-
-        const allLimitsResult = await fetchCreditLimits();
-        if (!allLimitsResult.success) {
-            showNotification('Não foi possível buscar os dados para o relatório.', 'error');
-            return;
-        }
-        
-        allLimitsForReport = allLimitsResult.data;
-
-        const filteredLimits = allLimitsForReport.filter(limit => {
-            const updateDate = limit.last_updated || limit.date_created;
-            if (!updateDate) return false;
-            const lastUpdated = new Date(updateDate);
-            return lastUpdated >= startDate && lastUpdated <= endDate;
-        });
-
-        if (filteredLimits.length > 0) {
-            renderReport(filteredLimits);
-        } else {
-            openReportConfirmationModal();
-        }
-    }
-
 
     // --- INICIALIZAÇÃO ---
+    // Verifica sessão salva no localStorage e inicializa a aplicação
     function initializeApp() {
         const storedToken = localStorage.getItem('bearerToken');
         const storedEmail = localStorage.getItem('loggedInUserEmail');
@@ -1033,7 +1364,9 @@ document.addEventListener('DOMContentLoaded', () => {
             loginScreen.classList.add('hidden');
             appScreen.classList.remove('hidden');
             
-            loadAndRenderLimits();
+            // O estado inicial agora é a tela de busca vazia
+            resetAppView(); 
+            populateReportLimitTypes(); // Garante o preenchimento inicial dos tipos no relatório
         }
     }
     
@@ -1043,4 +1376,3 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </body>
 </html>
-
